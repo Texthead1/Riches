@@ -410,6 +410,7 @@ namespace PortalToUnity
 
         public virtual bool PushTransfer(byte[] data, byte length = 0)
         {
+            //Debug.LogWarning("OUTPUT: " + BytesToHexString(data));
             IntPtr dataBuffer = Marshal.AllocHGlobal(data.Length);
             Marshal.Copy(data, 0, dataBuffer, data.Length);
             bool success = kDevice.ControlTransfer(SetupPacket(length), dataBuffer, length, out _, IntPtr.Zero);
@@ -447,9 +448,8 @@ namespace PortalToUnity
                     {
                         ReportRecieved(buffer);
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Debug.LogError(ex.Message);
                     }
                 }
 
@@ -463,6 +463,9 @@ namespace PortalToUnity
         public virtual void Destroy()
         {
             Instances.Remove(this);
+
+            for (int i = 0; i < FIGURE_INDICIES_COUNT; i++)
+                Figures[i] = null;
         }
 
         public void ReportRecieved(byte[] data)
@@ -513,13 +516,13 @@ namespace PortalToUnity
                         void FigureAdded()
                         {
                             Figures[i].Presence = presence;
-                            OnFigureAdded.Invoke(Figures[i]);
+                            OnFigureAdded?.Invoke(Figures[i]);
                         }
 
                         void FigureRemoved()
                         {
                             Figures[i].Presence = presence;
-                            OnFigureRemoved.Invoke(Figures[i]);
+                            OnFigureRemoved?.Invoke(Figures[i]);
                         }
                     }
                     break;

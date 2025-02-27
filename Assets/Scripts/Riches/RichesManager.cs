@@ -45,7 +45,7 @@ public class RichesManager : MonoBehaviour
     private void Update()
     {
         float sinValue = Mathf.Sin(Time.time * speed);
-        placeFigureText.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, sinValue * mult);   
+        placeFigureText.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, sinValue * mult);
     }
 
     public void ShowAlert(string title, string message)
@@ -167,7 +167,7 @@ public class RichesManager : MonoBehaviour
                 case SkyType.CreationCrystal:
                 case SkyType.Imaginator:
                     Portal.COMMAND_SetLEDColor(PortalElements.colors[skylander.Element].Color);
-                    ShowAlert("Reading", skylander.Name);
+                    ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait");
 
                     figure.TagBuffer = new FigType_CreationCrystal(figure);
                     FigType_CreationCrystal cc = (FigType_CreationCrystal)figure.TagBuffer;
@@ -245,7 +245,6 @@ public class RichesManager : MonoBehaviour
 
     private async void PortalAdded(PortalOfPower portal)
     {
-        Debug.Log("portal added");
         if (PortalOfPower.Instances.Count == 1)
         {
             HideAlert();
@@ -271,8 +270,16 @@ public class RichesManager : MonoBehaviour
 
     private async void PortalRemoved(PortalOfPower portal)
     {
-        Debug.Log("portal removed");
         portal.bootCTS.Cancel();
+
+        if (alertedFigure?.Parent == portal)
+            alertedFigure = null;
+        
+        for (int i = 0; i < finishedFigures.Count; i++)
+        {
+            if (finishedFigures[i].Parent == portal)
+                finishedFigures.Remove(finishedFigures[i]);
+        }
 
         if (portal == Portal)
         {

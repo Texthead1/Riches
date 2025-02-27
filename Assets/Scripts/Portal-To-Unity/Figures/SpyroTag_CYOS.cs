@@ -30,7 +30,7 @@ namespace PortalToUnity
             [FieldOffset(0x20)] public fixed ushort nickname[16];
         }
 
-        [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 0xB0)]
+        [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 0x100)]
         public struct RemainingData
         {
             [FieldOffset(0x00)] public TagTimeDate lastUsed;
@@ -55,18 +55,9 @@ namespace PortalToUnity
         public unsafe SpyroTag_CreationCrystal* SpyroTag { get; protected set; }
         public byte DataArea = 0;
 
-        public unsafe byte GetBattleClass()
-        {
-            byte battleClass = (byte)(SpyroTag->remainingData.AuraClass & 0xF);
-            Debug.Log((BattleClass)battleClass);
-            return battleClass;
-        }
+        public unsafe byte GetBattleClass() => (byte)(SpyroTag->remainingData.AuraClass & 0xF);
 
-        public unsafe void SetBattleClass(BattleClass battleClass)
-        {
-            SpyroTag->remainingData.AuraClass = (byte)((SpyroTag->remainingData.AuraClass & 0xF0) | (((byte)battleClass) & 0xF));
-            Debug.Log(SpyroTag->remainingData.AuraClass.ToString("X2"));
-        }
+        public unsafe void SetBattleClass(BattleClass battleClass) => SpyroTag->remainingData.AuraClass = (byte)((SpyroTag->remainingData.AuraClass & 0xF0) | (((byte)battleClass) & 0xF));
 
 #region FigType Info
         public unsafe FigType_CreationCrystal(PortalFigure portalFigure) : base(portalFigure)
@@ -207,7 +198,7 @@ namespace PortalToUnity
 
         private unsafe ushort CalculateCRCCYOS()
         {
-            Checksum crcCYOS = new Checksum(BLOCK_SIZE * 16, (IntPtr)(&SpyroTag->magicMoment.crcCYOS));
+            Checksum crcCYOS = new Checksum(sizeof(SpyroTag_CreationCrystal.RemainingData), (IntPtr)(&SpyroTag->magicMoment.crcCYOS));
             return crcCYOS.Calculate((IntPtr)(&SpyroTag->remainingData));
         }
 

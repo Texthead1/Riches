@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Rocket Ram
   CharacterID: 232
-  Type: 11
+  Type: 7
   Element: 0
   Prefix: 
   Variants: []

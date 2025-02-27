@@ -258,7 +258,7 @@ namespace PortalToUnity
 
         private unsafe ushort CalculateCRCType3()
         {
-            Checksum crcType3 = new Checksum(BLOCK_SIZE * 3, (IntPtr)(&SpyroTag->magicMomentRegion0.crcType3));
+            Checksum crcType3 = new Checksum(sizeof(SpyroTag_Skylander.RemainingDataRegion0), (IntPtr)(&SpyroTag->magicMomentRegion0.crcType3));
             return crcType3.Calculate((IntPtr)(&SpyroTag->remainingDataRegion0), 0xE0);
         }
 
@@ -276,7 +276,7 @@ namespace PortalToUnity
 
         private unsafe ushort CalculateCRCType6()
         {
-            Checksum crcType6 = new Checksum(BLOCK_SIZE * 4, (IntPtr)(&SpyroTag->magicMomentRegion1.crcType6), 0x0601);
+            Checksum crcType6 = new Checksum(sizeof(SpyroTag_Skylander.MagicMomentRegion1) + sizeof(SpyroTag_Skylander.RemainingDataRegion1), (IntPtr)(&SpyroTag->magicMomentRegion1.crcType6), 0x0601);
             return crcType6.Calculate((IntPtr)(&SpyroTag->magicMomentRegion1));
         }
 

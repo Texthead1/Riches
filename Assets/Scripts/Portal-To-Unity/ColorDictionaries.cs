@@ -51,6 +51,9 @@ namespace PortalToUnity
 
             colors.Add(Element.Kaos,
             new ElementColors(0x06, 0x00, 0x16));
+
+            colors.Add(Element.None, 
+            new ElementColors(0x00, 0x00, 0x00));
         }
     }
 }

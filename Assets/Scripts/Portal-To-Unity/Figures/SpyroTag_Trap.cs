@@ -193,7 +193,7 @@ namespace PortalToUnity
 
         private unsafe ushort CalculateCRCTrap()
         {
-            Checksum crcTrap = new Checksum(BLOCK_SIZE * 17, (IntPtr)(&SpyroTag->magicMoment.crcTrap));
+            Checksum crcTrap = new Checksum(sizeof(SpyroTag_Trap.RemainingData), (IntPtr)(&SpyroTag->magicMoment.crcTrap));
             return crcTrap.Calculate((IntPtr)(&SpyroTag->remainingData));
         }
 

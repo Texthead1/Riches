@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Dark Trap
   CharacterID: 218
-  Type: 0
-  Element: 0
+  Type: 11
+  Element: 10
   Prefix: 
   Variants:
   - {fileID: 11400000, guid: 234c6b10b51c7f34b989760fc740380a, type: 2}

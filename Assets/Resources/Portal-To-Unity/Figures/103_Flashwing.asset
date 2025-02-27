@@ -15,7 +15,7 @@ MonoBehaviour:
   Name: Flashwing
   CharacterID: 103
   Type: 0
-  Element: 0
+  Element: 1
   Prefix: 
   Variants:
   - {fileID: 11400000, guid: a7cd9c7dac978984e883adc8b78dad0e, type: 2}

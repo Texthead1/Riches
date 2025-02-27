@@ -81,7 +81,7 @@ namespace PortalToUnity
             if (result.AsyncState == null) return;
 
             if (Pipe.EndRead(result) != 0)
-                OnResponse.Invoke(Data);
+                OnResponse?.Invoke(Data);
             
             StartReading();
         }

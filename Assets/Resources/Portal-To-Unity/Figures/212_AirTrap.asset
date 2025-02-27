@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Air Trap
   CharacterID: 212
-  Type: 0
-  Element: 0
+  Type: 11
+  Element: 3
   Prefix: 
   Variants:
   - {fileID: 11400000, guid: 1a1fdb8bd987c114b9df73aa75868d18, type: 2}

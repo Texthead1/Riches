@@ -61,16 +61,6 @@ namespace PortalToUnity
             }
         }
 
-        // temp
-        public static unsafe byte[] ComposeKey(byte[] header0, byte[] header1)
-        {
-            byte[] buffer = new byte[KEY_SIZE];
-            Array.Copy(header0, buffer, BLOCK_SIZE);
-            Array.Copy(header1, 0, buffer, BLOCK_SIZE, BLOCK_SIZE);
-            Array.Copy(Salt, 0, buffer, 0x21, SALT_LENGTH);
-            return buffer;
-        }
-
         public static unsafe byte[] ComposeKey(SpyroTag_TagHeader* tagHeader)
         {
             byte[] key = new byte[KEY_SIZE];
@@ -81,23 +71,6 @@ namespace PortalToUnity
                 Buffer.MemoryCopy(salt, buffer + 0x21, KEY_SIZE - 0x21, SALT_LENGTH);
             }
             return key;
-        }
-
-        // temp
-        public static unsafe byte[] EncryptSpyroTagBlock(byte[] header0, byte[] header1, byte[] data, byte block)
-        {
-            if (!SaltIsReady())
-                return null;
-
-            byte[] key = ComposeKey(header0, header1);
-            key[0x20] = block;
-            cipher.Key = md5.ComputeHash(key);
-
-            byte[] buffer = new byte[BLOCK_SIZE];
-            Array.Copy(data, buffer, BLOCK_SIZE);
-
-            encryptor.TransformBlock(buffer, 0, BLOCK_SIZE, buffer, 0);
-            return buffer;
         }
 
         public static unsafe void EncryptSpyroTagBlock(SpyroTag_TagHeader* tagHeader, byte* data, byte block)
@@ -114,26 +87,6 @@ namespace PortalToUnity
 
             encryptor.TransformBlock(buffer, 0, BLOCK_SIZE, buffer, 0);
             Marshal.Copy(buffer, 0, (IntPtr)data, BLOCK_SIZE);
-        }
-
-        // temp
-        public static unsafe byte[] DecryptSpyroTagBlock(byte[] header0, byte[] header1, byte[] data, byte block)
-        {
-            if (!SaltIsReady())
-                return null;
-
-            if (data.Sum(x => x) == 0)
-                return data;
-
-            byte[] key = ComposeKey(header0, header1);
-            key[0x20] = block;
-            cipher.Key = md5.ComputeHash(key);
-
-            byte[] buffer = new byte[BLOCK_SIZE];
-            Array.Copy(data, buffer, BLOCK_SIZE);
-
-            decryptor.TransformBlock(buffer, 0, BLOCK_SIZE, buffer, 0);
-            return buffer;
         }
 
         public static unsafe void DecryptSpyroTagBlock(SpyroTag_TagHeader* tagHeader, byte* data, byte block)
