@@ -55,10 +55,6 @@ namespace PortalToUnity
         public unsafe SpyroTag_CreationCrystal* SpyroTag { get; protected set; }
         public byte DataArea = 0;
 
-        public unsafe byte GetBattleClass() => (byte)(SpyroTag->remainingData.AuraClass & 0xF);
-
-        public unsafe void SetBattleClass(BattleClass battleClass) => SpyroTag->remainingData.AuraClass = (byte)((SpyroTag->remainingData.AuraClass & 0xF0) | (((byte)battleClass) & 0xF));
-
 #region FigType Info
         public unsafe FigType_CreationCrystal(PortalFigure portalFigure) : base(portalFigure)
         {

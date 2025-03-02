@@ -302,7 +302,8 @@ namespace PortalToUnity
                     fixed (byte* dataPtr = data)
                         Cryptography.EncryptSpyroTagBlock(portalFigure.TagHeader, dataPtr, targetBlock);
                 }
-                await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, targetBlock, data);
+                if (!await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, targetBlock, data))
+                    throw new FigureRemovedException($"The figure being written at block {targetBlock} was removed.");
             }
         }
 
@@ -326,7 +327,8 @@ namespace PortalToUnity
                     fixed (byte* dataPtr = data)
                         Cryptography.EncryptSpyroTagBlock(portalFigure.TagHeader, dataPtr, targetBlock);
                 }
-                await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, targetBlock, data);
+                if (!await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, targetBlock, data))
+                    throw new FigureRemovedException($"The figure being written at block {targetBlock} was removed.");
             }
         }
 

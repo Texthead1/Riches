@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
-using static PortalToUnity.Global;
 
 namespace PortalToUnity
 {

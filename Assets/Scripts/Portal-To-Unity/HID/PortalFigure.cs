@@ -1,7 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using UnityEngine;
 using static PortalToUnity.Global;
 
 namespace PortalToUnity
@@ -44,7 +43,7 @@ namespace PortalToUnity
 
     public class PortalFigure : IDisposable
     {
-        public PortalOfPower Parent { get; }
+        public PortalOfPower Parent { get; internal set; }
         public byte Index { get; }
 
         public unsafe SpyroTag_TagHeader* TagHeader { get; protected set; }

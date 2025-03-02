@@ -125,11 +125,6 @@ namespace PortalToUnity
 
         public void COMMAND_SetTraptaniumLEDColor(PortalLED side, byte r, byte g, byte b, short transitionTime)
         {
-            if (side == PortalLED.Trap)
-            {
-                // Tell user off
-            }
-
             byte[] command = ConstructCommand(
                 'J',
                 (byte)side,
@@ -410,7 +405,6 @@ namespace PortalToUnity
 
         public virtual bool PushTransfer(byte[] data, byte length = 0)
         {
-            //Debug.LogWarning("OUTPUT: " + BytesToHexString(data));
             IntPtr dataBuffer = Marshal.AllocHGlobal(data.Length);
             Marshal.Copy(data, 0, dataBuffer, data.Length);
             bool success = kDevice.ControlTransfer(SetupPacket(length), dataBuffer, length, out _, IntPtr.Zero);
@@ -439,7 +433,6 @@ namespace PortalToUnity
             while (isReading)
             {
                 bool success = false;
-
                 await Task.Run(() => success = kDevice.ReadPipe(0x81, buffer, (uint)buffer.Length, out _, IntPtr.Zero));
 
                 if (success)
@@ -465,7 +458,12 @@ namespace PortalToUnity
             Instances.Remove(this);
 
             for (int i = 0; i < FIGURE_INDICIES_COUNT; i++)
+            {
+                Figures[i].Parent = null;
+                Figures[i].Dispose();
                 Figures[i] = null;
+                OnFigureRemoved?.Invoke(Figures[i]);
+            }
         }
 
         public void ReportRecieved(byte[] data)
@@ -474,10 +472,6 @@ namespace PortalToUnity
             {
                 case 'A':
                     Active = data[1] != 0x00;
-                    break;
-                
-                case 'Q':
-                    ushort characterID = (ushort)(data[0] | data[1] << 0x08);
                     break;
                 
                 case 'R':

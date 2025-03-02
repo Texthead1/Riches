@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using PimDeWitte.UnityMainThreadDispatcher;
@@ -19,6 +20,7 @@ public class RichesManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI alertText;
     [SerializeField] private TextMeshProUGUI alertDescription;
     private PortalFigure alertedFigure;
+    private CancellationTokenSource cts = new CancellationTokenSource();
     
     private List<PortalFigure> finishedFigures = new List<PortalFigure>();
 
@@ -46,22 +48,58 @@ public class RichesManager : MonoBehaviour
     {
         float sinValue = Mathf.Sin(Time.time * speed);
         placeFigureText.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, sinValue * mult);
+        Debug.Log(alertedFigure != null);
+        Debug.Log(finishedFigures.Count);
     }
 
-    public void ShowAlert(string title, string message)
+    public bool ShowAlert(string title, bool force = true)
     {
+        bool result = true;
+        if (cts.IsCancellationRequested)
+        {
+            if (!force)
+                return false;
+            else
+                result = false;
+        }
+
+        UnityMainThreadDispatcher.Instance().Enqueue(() =>
+        {
+            alertText.text = title;
+            alert.SetActive(true);
+        });
+        return result;
+    }
+
+    public bool ShowAlert(string title, string message, bool force = true)
+    {
+        bool result = true;
+        if (cts.IsCancellationRequested)
+        {
+            if (!force)
+                return false;
+            else
+                result = false;
+        }
+
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
             alertText.text = title;
             alertDescription.text = message;
             alert.SetActive(true);
         });
+        return result;
     }
 
     public void HideAlert()
     {
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
+            if (PortalOfPower.Instances.Count == 0)
+            {
+                ShowAlert("No Portal Found", "Please plug in a Portal of Power with the libusbK driver");
+                return;
+            }
             if (finishedFigures.Count > 0)
             {
                 (ToyCode characterID, VariantID variantID) = GetCharacterAndVariantIDs(finishedFigures[0]);
@@ -73,29 +111,29 @@ public class RichesManager : MonoBehaviour
                 {
                     case RichesRecogniseState.Normal:
                         ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power");
-                        Portal.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
+                        Portal?.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
                         break;
                     
                     case RichesRecogniseState.Unsupported:
                         ShowAlert("Unsupported Skylander", $"Please remove {skylander.Name} from the Portal of Power");
-                        Portal.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
+                        Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                         break;
                     
                     case RichesRecogniseState.Unknown:
                         ShowAlert("Unknown Skylander", "Please remove this Skylander from the Portal of Power");
-                        Portal.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
+                        Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                         break;
                     
                     case RichesRecogniseState.NotASkylander:
                         ShowAlert("Unknown Toy", "Please remove this toy from the Portal of Power");
-                        Portal.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
+                        Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                         break;
                 }
                 return;
             }
             alertedFigure = null;
             alert.SetActive(false);
-            Portal.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
+            Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
         });
     }
 
@@ -109,6 +147,8 @@ public class RichesManager : MonoBehaviour
     private async Task DoFigure(PortalFigure figure)
     {
         figure.Parent.currentlyQueryingFigure = figure;
+        cts?.Cancel();
+        cts = new CancellationTokenSource();
 
         try
         {
@@ -121,10 +161,10 @@ public class RichesManager : MonoBehaviour
                 if (figure.Parent.FiguresInQueue.Count == 0)
                 {
                     figure.recogniseState = RichesRecogniseState.Unknown;
-                    Portal.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
-                    ShowAlert("Unknown Skylander", "Please remove this Skylander from the Portal of Power");
+                    if (!ShowAlert("Unknown Skylander", "Please remove this Skylander from the Portal of Power")) throw new Exception();
+                    Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                 }
-                finishedFigures.Add(figure);
+                finishedFigures.Insert(0, figure);
                 return;
             }
 
@@ -139,8 +179,8 @@ public class RichesManager : MonoBehaviour
                 case SkyType.Sensei:
                 case SkyType.Mini:
                 case SkyType.SWAPForceTop:
-                    Portal.COMMAND_SetLEDColor(PortalElements.colors[skylander.Element].Color);
-                    ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait");
+                    if (!ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait", false)) throw new Exception();
+                    Portal?.COMMAND_SetLEDColor(PortalElements.colors[skylander.Element].Color);
 
                     figure.TagBuffer = new FigType_Skylander(figure);
                     FigType_Skylander sky = (FigType_Skylander)figure.TagBuffer;
@@ -150,24 +190,24 @@ public class RichesManager : MonoBehaviour
 
                     unsafe { sky.SpyroTag->magicMomentRegion0.money = ushort.MaxValue; }
 
-                    ShowAlert("Writing", $"Giving {skylander.Name} max money. Please wait");
+                    if (!ShowAlert("Writing", false)) throw new Exception();
 
                     await sky.SetMagicMoment0();
                     await sky.SetRemainingData0();
 
-                    finishedFigures.Add(figure);
+                    finishedFigures.Insert(0, figure);
 
                     if (figure.Parent.FiguresInQueue.Count == 0)
                     {
-                        Portal.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
-                        ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power");
+                        if (!ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power", false)) throw new Exception();
+                        Portal?.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
                     }
                     break;
                 
                 case SkyType.CreationCrystal:
                 case SkyType.Imaginator:
-                    Portal.COMMAND_SetLEDColor(PortalElements.colors[skylander.Element].Color);
-                    ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait");
+                    if (!ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait", false)) throw new Exception();
+                    Portal?.COMMAND_SetLEDColor(PortalElements.colors[skylander.Element].Color);
 
                     figure.TagBuffer = new FigType_CreationCrystal(figure);
                     FigType_CreationCrystal cc = (FigType_CreationCrystal)figure.TagBuffer;
@@ -177,19 +217,18 @@ public class RichesManager : MonoBehaviour
 
                     unsafe { cc.SpyroTag->magicMoment.money = ushort.MaxValue; }
 
-                    ShowAlert("Writing", $"Giving {skylander.Name} max money. Please wait");
+                    if (!ShowAlert("Writing", false)) throw new Exception();
 
                     await cc.SetMagicMoment();
                     await cc.SetRemainingData();
 
-                    finishedFigures.Add(figure);
+                    finishedFigures.Insert(0, figure);
 
                     if (figure.Parent.FiguresInQueue.Count == 0)
                     {
-                        Portal.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
-                        ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power");
+                        if (!ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power", false)) throw new Exception();
+                        Portal?.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
                     }
-                    
                     break;
                 
                 case SkyType.SWAPForceBottom:
@@ -197,14 +236,13 @@ public class RichesManager : MonoBehaviour
                 
                 default:
                     figure.recogniseState = RichesRecogniseState.Unsupported;
-                    finishedFigures.Add(figure);
+                    finishedFigures.Insert(0, figure);
 
                     if (figure.Parent.FiguresInQueue.Count == 0)
                     {
-                        Portal.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
-                        ShowAlert("Unsupported Skylander", $"Please remove {skylander.Name} from the Portal of Power");
+                        if (!ShowAlert("Unsupported Skylander", $"Please remove {skylander.Name} from the Portal of Power", false)) throw new Exception();
+                        Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                     }
-
                     break;
             }
         }
@@ -217,25 +255,39 @@ public class RichesManager : MonoBehaviour
         {
             Debug.LogException(ex);
             figure.recogniseState = RichesRecogniseState.NotASkylander;
-            finishedFigures.Add(figure);
+
+            if (figure.Parent != null)
+                finishedFigures.Insert(0, figure);
 
             if (figure.Parent.FiguresInQueue.Count == 0)
             {
                 alertedFigure = figure;
-                Portal.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
-                ShowAlert("Unknown Toy", "Please remove this toy from the Portal of Power");
+                if (!ShowAlert("Unknown Toy", "Please remove this toy from the Portal of Power", false)) return;
+                Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
             }
+        }
+        catch (CryptographicException ex)
+        {
+            Debug.LogException(ex);
+            ShowAlert("No Salt Provided", $"No correct salt.txt could be found at \"Assets/StreamingAssets/\". Please add the file and close the program");
+        }
+        catch (Exception)
+        {
+            alertedFigure = null;
+            if (finishedFigures.Contains(figure))
+                finishedFigures.Remove(figure);
         }
         finally
         {
             figure.Parent.currentlyQueryingFigure = null;
             await FigureNoLongerBeingQueried(figure);
+            cts = new CancellationTokenSource();
         }
     }
 
     private async Task FigureNoLongerBeingQueried(PortalFigure figure)
     {
-        if (figure.Parent.FiguresInQueue.Count > 0)
+        if (figure.Parent.FiguresInQueue.Count > 0 && PortalOfPower.Instances.Count == 1)
         {
             PortalFigure queuedFigure = figure.Parent.FiguresInQueue[0];
             figure.Parent.FiguresInQueue.Remove(figure.Parent.FiguresInQueue[0]);
@@ -249,15 +301,15 @@ public class RichesManager : MonoBehaviour
         {
             HideAlert();
             Portal = portal;
-            portal.OnFigureAdded += PortalFigureAdded;
-            portal.OnFigureRemoved += PortalFigureRemoved;
-            portal.OnInputReport += PortalInputReport;
+            Portal.OnFigureAdded += PortalFigureAdded;
+            Portal.OnFigureRemoved += PortalFigureRemoved;
+            Portal.OnInputReport += PortalInputReport;
             await SetUpPortal(portal);
 
-            if (portal.FiguresInQueue.Count > 0 && Portal == portal)
+            if (portal?.FiguresInQueue.Count > 0 && Portal == portal)
             {
-                PortalFigure queuedFigure = portal.FiguresInQueue[0];
-                portal.FiguresInQueue.Remove(portal.FiguresInQueue[0]);
+                PortalFigure queuedFigure = Portal?.FiguresInQueue[0];
+                Portal?.FiguresInQueue.Remove(Portal?.FiguresInQueue[0]);
                 await DoFigure(queuedFigure);
             }
         }
@@ -270,7 +322,7 @@ public class RichesManager : MonoBehaviour
 
     private async void PortalRemoved(PortalOfPower portal)
     {
-        portal.bootCTS.Cancel();
+        portal?.bootCTS?.Cancel();
 
         if (alertedFigure?.Parent == portal)
             alertedFigure = null;
@@ -283,25 +335,27 @@ public class RichesManager : MonoBehaviour
 
         if (portal == Portal)
         {
-            Portal.OnFigureAdded -= PortalFigureAdded;
-            Portal.OnFigureRemoved -= PortalFigureRemoved;
+            cts?.Cancel();
+            portal.OnFigureAdded -= PortalFigureAdded;
+            portal.OnFigureRemoved -= PortalFigureRemoved;
             portal.OnInputReport -= PortalInputReport;
 
             if (PortalOfPower.Instances.Count > 1 && PortalOfPower.Instances[1] != null)
             {
-                Portal = PortalOfPower.Instances[1];
+                PortalOfPower _portal = PortalOfPower.Instances[1];
+                Portal = _portal;
                 HideAlert();
                 
-                portal.OnFigureAdded += PortalFigureAdded;
-                portal.OnFigureRemoved += PortalFigureRemoved;
-                portal.OnInputReport += PortalInputReport;
+                _portal.OnFigureAdded += PortalFigureAdded;
+                _portal.OnFigureRemoved += PortalFigureRemoved;
+                _portal.OnInputReport += PortalInputReport;
                 
-                await SetUpPortal(Portal);
+                await SetUpPortal(_portal);
                 
-                if (portal.FiguresInQueue.Count > 0 && Portal == portal)
+                if (Portal?.FiguresInQueue.Count > 0 && Portal == _portal)
                 {
-                    PortalFigure queuedFigure = portal.FiguresInQueue[0];
-                    portal.FiguresInQueue.Remove(portal.FiguresInQueue[0]);
+                    PortalFigure queuedFigure = Portal?.FiguresInQueue[0];
+                    Portal?.FiguresInQueue.Remove(Portal?.FiguresInQueue[0]);
                     await DoFigure(queuedFigure);
                 }
                 return;
@@ -310,7 +364,6 @@ public class RichesManager : MonoBehaviour
             Portal = null;
             return;
         }
-
         if (PortalOfPower.Instances.Count == 2)
             HideAlert();
     }
@@ -329,7 +382,7 @@ public class RichesManager : MonoBehaviour
                 return;
             }
 
-            portal.COMMAND_ResetPortal();
+            portal?.COMMAND_ResetPortal();
 
             try
             {
@@ -341,14 +394,14 @@ public class RichesManager : MonoBehaviour
 
             if (portal == null || !PortalOfPower.Instances.Contains(portal)) return;
 
-            if (portal.State > PortalState.SetUpForInterface)
+            if (portal?.State > PortalState.SetUpForInterface)
                 break;
             
             timeout++;
         }
 
         timeout = 0;
-        portal.COMMAND_ResetPortal();
+        portal?.COMMAND_ResetPortal();
         portal.bootCTS = new CancellationTokenSource();
         
         while (true)
@@ -359,7 +412,7 @@ public class RichesManager : MonoBehaviour
                 return;
             }
 
-            portal.COMMAND_SetAntenna(true);
+            portal?.COMMAND_SetAntenna(true);
 
             try
             {
@@ -369,7 +422,7 @@ public class RichesManager : MonoBehaviour
 
             if (portal == null || !PortalOfPower.Instances.Contains(portal)) return;
 
-            if (portal.State == PortalState.Standby) break;
+            if (portal?.State == PortalState.Standby) break;
 
             timeout++;
         }
@@ -380,9 +433,9 @@ public class RichesManager : MonoBehaviour
         portal.State = PortalState.Ready;
     }
 
-    private void PortalFigureAdded(PortalFigure figure)
+    private async void PortalFigureAdded(PortalFigure figure)
     {
-        if (figure.Parent == Portal)
+        if (figure.Parent == Portal && PortalOfPower.Instances.Count == 1)
         {
             if (figure.Parent.currentlyQueryingFigure != null || !figure.Parent.readFigures)
             {
@@ -390,28 +443,28 @@ public class RichesManager : MonoBehaviour
                 figure.Parent.FiguresInQueue.Add(figure);
                 return;
             }
-            DoFigure(figure);
+            await DoFigure(figure);
         }
     }
 
-    private void PortalFigureRemoved(PortalFigure figure)
+    private async void PortalFigureRemoved(PortalFigure figure)
     {
-        if (figure.Parent == Portal)
+        if (figure.Parent.FiguresInQueue.Contains(figure))
+            figure.Parent.FiguresInQueue.Remove(figure);
+
+        if (figure.Parent.currentlyQueryingFigure == figure)
         {
-            if (figure.Parent.FiguresInQueue.Contains(figure))
-                figure.Parent.FiguresInQueue.Remove(figure);
+            figure.Parent.currentlyQueryingFigure = null;
+            await FigureNoLongerBeingQueried(figure);
+        }
 
-            if (figure.Parent.currentlyQueryingFigure == figure)
+        if (finishedFigures.Contains(figure))
+        {
+            finishedFigures.Remove(figure);
+            if (alertedFigure == figure)
             {
-                figure.Parent.currentlyQueryingFigure = null;
-                FigureNoLongerBeingQueried(figure);
-            }
-
-            if (finishedFigures.Contains(figure))
-            {
-                finishedFigures.Remove(figure);
-                if (alertedFigure == figure)
-                    HideAlert();
+                alertedFigure = null;
+                HideAlert();
             }
         }
     }
@@ -420,21 +473,21 @@ public class RichesManager : MonoBehaviour
     {
         if ((char)data[0] == 'A')
         {
-            if (portal.State == PortalState.CommunicatingWithAntenna)
+            if (portal?.State == PortalState.CommunicatingWithAntenna)
             {
-                portal.bootCTS.Cancel();
+                portal?.bootCTS.Cancel();
                 portal.State = PortalState.Standby;
             }
         }
         else if ((char)data[0] == 'R')
         {
-            if (portal.State == PortalState.SetUpForInterface)
+            if (portal?.State == PortalState.SetUpForInterface)
             {
-                portal.bootCTS.Cancel();
+                portal?.bootCTS.Cancel();
                 portal.State = PortalState.CommunicatingWithAntenna;
             }
             
-            foreach (PortalFigure fig in portal.Figures)
+            foreach (PortalFigure fig in portal?.Figures)
                 fig.Presence = FigurePresence.NotPresent;
         }
     }

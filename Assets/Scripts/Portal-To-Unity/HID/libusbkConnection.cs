@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace PortalToUnity
 {
-    public class libusbkConnection : MonoBehaviour
+    public class libusbKConnection : MonoBehaviour
     {
         private HotK hotK;
         private KHOT_PARAMS khotParams = new KHOT_PARAMS();

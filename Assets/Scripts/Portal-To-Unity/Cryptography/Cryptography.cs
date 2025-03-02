@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -76,7 +77,7 @@ namespace PortalToUnity
         public static unsafe void EncryptSpyroTagBlock(SpyroTag_TagHeader* tagHeader, byte* data, byte block)
         {
             if (!SaltIsReady())
-                return;
+                throw new CryptographicException("No salt.txt or an incorrect one was provided");
             
             byte[] key = ComposeKey(tagHeader);
             key[0x20] = block;
@@ -92,7 +93,7 @@ namespace PortalToUnity
         public static unsafe void DecryptSpyroTagBlock(SpyroTag_TagHeader* tagHeader, byte* data, byte block)
         {
             if (!SaltIsReady())
-                return;
+                throw new CryptographicException("No salt.txt or an incorrect one was provided");
             
             ulong* ulongPtr = (ulong*)data;
             if (ulongPtr[0] == 0 && ulongPtr[1] == 0)
