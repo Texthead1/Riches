@@ -1,7 +1,7 @@
 # Riches
 A simple GUI application to instantly max out the gold to 65535 on all compatible Skylanders figures, in the Unity Engine, for Windows.
 
-This application is able to modify all Skylanders figures that can possess money/gold, including core Skylanders, Giants, Trap Masters etc... SWAP Force Skylanders, as well as Senseis and Creation Crystals, can also be modified without issue.
+This application is able to modify all Skylanders figures that can possess money/gold, including core Skylanders, Giants, SWAP Force Skylanders, Trap Masters etc... as you might expect. Senseis can also be modified with no hassle (something the current SkyEditGUI is notoriously bad at, which can result in permanently bricked figures). Creation Crystals can be modified as well, making this the first public tool capable of altering them in any way beyond factory resetting them.
 
 Multiple Skylanders can be handled at once on a single Portal of Power without any errors. However, only a single Portal of Power should be used at any given time.
 
