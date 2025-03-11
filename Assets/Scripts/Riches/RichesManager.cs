@@ -48,8 +48,6 @@ public class RichesManager : MonoBehaviour
     {
         float sinValue = Mathf.Sin(Time.time * speed);
         placeFigureText.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, sinValue * mult);
-        Debug.Log(alertedFigure != null);
-        Debug.Log(finishedFigures.Count);
     }
 
     public bool ShowAlert(string title, bool force = true)
@@ -103,28 +101,28 @@ public class RichesManager : MonoBehaviour
             if (finishedFigures.Count > 0)
             {
                 (ToyCode characterID, VariantID variantID) = GetCharacterAndVariantIDs(finishedFigures[0]);
-                Skylander skylander = SkylanderDatabase.GetSkylander(characterID);
+                if (!SkylanderDatabase.GetSkylander(characterID, out Skylander skylander)) return;
                 
                 alertedFigure = finishedFigures[0];
 
-                switch (finishedFigures[0].recogniseState)
+                switch (finishedFigures[0].AcknowledgeState)
                 {
-                    case RichesRecogniseState.Normal:
+                    case FigureAcknowledgeState.Recognised:
                         ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power");
                         Portal?.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
                         break;
                     
-                    case RichesRecogniseState.Unsupported:
+                    case FigureAcknowledgeState.Unsupported:
                         ShowAlert("Unsupported Skylander", $"Please remove {skylander.Name} from the Portal of Power");
                         Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                         break;
                     
-                    case RichesRecogniseState.Unknown:
+                    case FigureAcknowledgeState.Unrecognised:
                         ShowAlert("Unknown Skylander", "Please remove this Skylander from the Portal of Power");
                         Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                         break;
                     
-                    case RichesRecogniseState.NotASkylander:
+                    case FigureAcknowledgeState.NotASkylander:
                         ShowAlert("Unknown Toy", "Please remove this toy from the Portal of Power");
                         Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                         break;
@@ -160,7 +158,7 @@ public class RichesManager : MonoBehaviour
             {
                 if (figure.Parent.FiguresInQueue.Count == 0)
                 {
-                    figure.recogniseState = RichesRecogniseState.Unknown;
+                    figure.AcknowledgeState = FigureAcknowledgeState.Unrecognised;
                     if (!ShowAlert("Unknown Skylander", "Please remove this Skylander from the Portal of Power")) throw new Exception();
                     Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
                 }
@@ -168,7 +166,7 @@ public class RichesManager : MonoBehaviour
                 return;
             }
 
-            Skylander skylander = SkylanderDatabase.GetSkylander(characterID);
+            if (!SkylanderDatabase.GetSkylander(characterID, out Skylander skylander)) return;
 
             switch (skylander.Type)
             {
@@ -180,7 +178,7 @@ public class RichesManager : MonoBehaviour
                 case SkyType.Mini:
                 case SkyType.SWAPForceTop:
                     if (!ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait", false)) throw new Exception();
-                    Portal?.COMMAND_SetLEDColor(PortalElements.colors[skylander.Element].Color);
+                    Portal?.COMMAND_SetLEDColor(Elements.Colors[skylander.Element][0]);
 
                     figure.TagBuffer = new FigType_Skylander(figure);
                     FigType_Skylander sky = (FigType_Skylander)figure.TagBuffer;
@@ -207,7 +205,7 @@ public class RichesManager : MonoBehaviour
                 case SkyType.CreationCrystal:
                 case SkyType.Imaginator:
                     if (!ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait", false)) throw new Exception();
-                    Portal?.COMMAND_SetLEDColor(PortalElements.colors[skylander.Element].Color);
+                    Portal?.COMMAND_SetLEDColor(Elements.Colors[skylander.Element][0]);
 
                     figure.TagBuffer = new FigType_CreationCrystal(figure);
                     FigType_CreationCrystal cc = (FigType_CreationCrystal)figure.TagBuffer;
@@ -235,7 +233,7 @@ public class RichesManager : MonoBehaviour
                     break;
                 
                 default:
-                    figure.recogniseState = RichesRecogniseState.Unsupported;
+                    figure.AcknowledgeState = FigureAcknowledgeState.Unsupported;
                     finishedFigures.Insert(0, figure);
 
                     if (figure.Parent.FiguresInQueue.Count == 0)
@@ -254,7 +252,7 @@ public class RichesManager : MonoBehaviour
         catch (FigureErrorException ex)
         {
             Debug.LogException(ex);
-            figure.recogniseState = RichesRecogniseState.NotASkylander;
+            figure.AcknowledgeState = FigureAcknowledgeState.NotASkylander;
 
             if (figure.Parent != null)
                 finishedFigures.Insert(0, figure);
@@ -303,8 +301,6 @@ public class RichesManager : MonoBehaviour
             Portal = portal;
             Portal.OnFigureAdded += PortalFigureAdded;
             Portal.OnFigureRemoved += PortalFigureRemoved;
-            Portal.OnInputReport += PortalInputReport;
-            await SetUpPortal(portal);
 
             if (portal?.FiguresInQueue.Count > 0 && Portal == portal)
             {
@@ -312,18 +308,13 @@ public class RichesManager : MonoBehaviour
                 Portal?.FiguresInQueue.Remove(Portal?.FiguresInQueue[0]);
                 await DoFigure(queuedFigure);
             }
+            return;
         }
-        else
-        {
-            ShowAlert("Too Many Portals", "Please ensure only one Portal of Power is plugged in at a time");
-            await SetUpPortal(portal);
-        }
+        ShowAlert("Too Many Portals", "Please ensure only one Portal of Power is plugged in at a time");
     }
 
     private async void PortalRemoved(PortalOfPower portal)
     {
-        portal?.bootCTS?.Cancel();
-
         if (alertedFigure?.Parent == portal)
             alertedFigure = null;
         
@@ -338,20 +329,17 @@ public class RichesManager : MonoBehaviour
             cts?.Cancel();
             portal.OnFigureAdded -= PortalFigureAdded;
             portal.OnFigureRemoved -= PortalFigureRemoved;
-            portal.OnInputReport -= PortalInputReport;
 
-            if (PortalOfPower.Instances.Count > 1 && PortalOfPower.Instances[1] != null)
+            if (PortalOfPower.Instances.Count == 1 && PortalOfPower.Instances[0] != null)
             {
-                PortalOfPower _portal = PortalOfPower.Instances[1];
+                PortalOfPower _portal = PortalOfPower.Instances[0];
                 Portal = _portal;
-                HideAlert();
                 
                 _portal.OnFigureAdded += PortalFigureAdded;
                 _portal.OnFigureRemoved += PortalFigureRemoved;
-                _portal.OnInputReport += PortalInputReport;
                 
-                await SetUpPortal(_portal);
-                
+                HideAlert();
+
                 if (Portal?.FiguresInQueue.Count > 0 && Portal == _portal)
                 {
                     PortalFigure queuedFigure = Portal?.FiguresInQueue[0];
@@ -364,90 +352,18 @@ public class RichesManager : MonoBehaviour
             Portal = null;
             return;
         }
-        if (PortalOfPower.Instances.Count == 2)
+        if (PortalOfPower.Instances.Count == 1)
             HideAlert();
     }
-
-    private async Task SetUpPortal(PortalOfPower portal)
-    {
-        portal.State = PortalState.SetUpForInterface;
-        int timeout = 0;
-        portal.bootCTS = new CancellationTokenSource();
-
-        while (true)
-        {
-            if (timeout == 10)
-            {
-                Debug.LogError("Portal failing to return info! Please unplug the Portal of Power");
-                return;
-            }
-
-            portal?.COMMAND_ResetPortal();
-
-            try
-            {
-                await Task.Delay(50 + (timeout * 100), portal.bootCTS.Token);
-            }
-            catch (OperationCanceledException) { break; }
-
-            if (portal == null || !PortalOfPower.Instances.Contains(portal)) 
-
-            if (portal == null || !PortalOfPower.Instances.Contains(portal)) return;
-
-            if (portal?.State > PortalState.SetUpForInterface)
-                break;
-            
-            timeout++;
-        }
-
-        timeout = 0;
-        portal?.COMMAND_ResetPortal();
-        portal.bootCTS = new CancellationTokenSource();
-        
-        while (true)
-        {
-            if (timeout == 5)
-            {
-                Debug.LogError("Portal failing to return info! Please unplug the Portal of Power");
-                return;
-            }
-
-            portal?.COMMAND_SetAntenna(true);
-
-            try
-            {
-                await Task.Delay(50 + (timeout * 100), portal.bootCTS.Token);
-            }
-            catch (OperationCanceledException) { break; }
-
-            if (portal == null || !PortalOfPower.Instances.Contains(portal)) return;
-
-            if (portal?.State == PortalState.Standby) break;
-
-            timeout++;
-        }
-
-        if (portal == null || !PortalOfPower.Instances.Contains(portal)) return;
-
-        portal.readFigures = true;
-        portal.State = PortalState.Ready;
-    }
-
     private async void PortalFigureAdded(PortalFigure figure)
     {
         if (figure.Parent == Portal && PortalOfPower.Instances.Count == 1)
         {
-            if (figure.Parent.currentlyQueryingFigure != null || !figure.Parent.readFigures)
-            {
-                if (figure.Parent.State < PortalState.Standby) return;
-                figure.Parent.FiguresInQueue.Add(figure);
-                return;
-            }
             await DoFigure(figure);
         }
     }
 
-    private async void PortalFigureRemoved(PortalFigure figure)
+    private async void PortalFigureRemoved(PortalFigure figure, FigureDepartInfo info)
     {
         if (figure.Parent.FiguresInQueue.Contains(figure))
             figure.Parent.FiguresInQueue.Remove(figure);
@@ -466,29 +382,6 @@ public class RichesManager : MonoBehaviour
                 alertedFigure = null;
                 HideAlert();
             }
-        }
-    }
-
-    private void PortalInputReport(PortalOfPower portal, byte[] data)
-    {
-        if ((char)data[0] == 'A')
-        {
-            if (portal?.State == PortalState.CommunicatingWithAntenna)
-            {
-                portal?.bootCTS.Cancel();
-                portal.State = PortalState.Standby;
-            }
-        }
-        else if ((char)data[0] == 'R')
-        {
-            if (portal?.State == PortalState.SetUpForInterface)
-            {
-                portal?.bootCTS.Cancel();
-                portal.State = PortalState.CommunicatingWithAntenna;
-            }
-            
-            foreach (PortalFigure fig in portal?.Figures)
-                fig.Presence = FigurePresence.NotPresent;
         }
     }
 }
