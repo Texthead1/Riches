@@ -16,7 +16,7 @@ MonoBehaviour:
   Tag: Series 3
   VariantID:
     YearCode: 2
-    IsRepose: 0
+    IsRepose: 1
     IsAltDeco: 0
     IsLightCore: 0
     IsSuperCharger: 0

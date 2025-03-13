@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -13,6 +14,7 @@ namespace PortalToUnity
         private Vector2 leftScrollPos;
         private Vector2 rightScrollPos;
         private float leftPanelWidth = 0.5f;
+        private bool refreshingVillains = false;
 
         [MenuItem("Portal-To-Unity/Villains Database")]
         public static void ShowWindow()
@@ -22,7 +24,9 @@ namespace PortalToUnity
 
         public void OnGUI()
         {
-            OnEnable();
+            if (!refreshingVillains)
+                LoadVillains();
+
             EditorGUILayout.BeginHorizontal();
             GUIStyle boldStyle = new GUIStyle(GUI.skin.label);
             boldStyle.fontStyle = FontStyle.Bold;
@@ -36,7 +40,7 @@ namespace PortalToUnity
             {
                 boldStyle.wordWrap = true;
                 leftScrollPos = EditorGUILayout.BeginScrollView(leftScrollPos);
-                EditorGUILayout.LabelField("Please add Villains to the database by putting them in \"Assets/Resources/Portal-To-Unity/Villains\"", boldStyle);
+                EditorGUILayout.LabelField("Please add Villains to the database by putting them in \"Assets/Resources/Portal-To-Unity/Villains/\"", boldStyle);
                 e = Event.current;
                 if (e.type == EventType.ContextClick)
                     ShowContextOption("Open File Location", "Assets/Resources/Portal-To-Unity/Villains/");
@@ -113,7 +117,24 @@ namespace PortalToUnity
 
         private void OnEnable()
         {
-            villains = Resources.LoadAll<Villain>("Portal-To-Unity/Villains").ToList();
+            LoadVillains();
+            InspectVillains();
+        }
+
+        private void OnDisable()
+        {
+            refreshingVillains = false;
+        }
+
+        private async void LoadVillains()
+        {
+            refreshingVillains = true;
+            while (refreshingVillains)
+            {
+                villains = Resources.LoadAll<Villain>("Portal-To-Unity/Villains").ToList();
+                await Task.Delay(750);
+            }
+            refreshingVillains = false;
         }
 
         private void ShowContextOption(string text, string path)
@@ -133,5 +154,27 @@ namespace PortalToUnity
         private void OpenFileLocation(string path) => EditorUtility.RevealInFinder(path);
 
         private void OpenFileLocation(string path, Villain file) => OpenFileLocation(path + file.name + ".asset");
+
+        private void InspectVillains()
+        {
+            HashSet<VillainVariant> villainVariants = new HashSet<VillainVariant>(Resources.LoadAll<VillainVariant>("Portal-To-Unity/Villains/"));
+            Debug.Log($"Loaded {villains.Count} Villains and {villainVariants.Count} variants");
+
+            foreach (Villain villain in villains)
+            {
+                if (villain.Variant != null)
+                {
+                    if (villainVariants.Contains(villain.Variant))
+                        villainVariants.Remove(villain.Variant);
+                }
+            }
+
+            if (villainVariants.Count > 0)
+            {
+                Debug.LogError("Unreferenced Villain variants:");
+                foreach (VillainVariant unreferencedVariant in villainVariants)
+                    Debug.LogError(unreferencedVariant.name);
+            }
+        }
     }
 }

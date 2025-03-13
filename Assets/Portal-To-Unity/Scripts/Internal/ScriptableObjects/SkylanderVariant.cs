@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using static PortalToUnity.Global;
 
 namespace PortalToUnity
 {
@@ -148,8 +149,8 @@ namespace PortalToUnity
             variant.VariantID = variantID;
             variant.NameOverride = null;
 
-            string path = "Assets/Resources/Portal-To-Unity/Database/NewSkylanderVariant.asset";
-            ProjectWindowUtil.CreateAsset(variant, path);
+            string selectedPath = GetSelectedPathOrFallback();
+            ProjectWindowUtil.CreateAsset(variant, AssetDatabase.GenerateUniqueAssetPath(selectedPath + "/NewSkylanderVariant.asset"));
         }
 #endif
     }

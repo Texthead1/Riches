@@ -16,9 +16,9 @@ MonoBehaviour:
   Tag: Rare
   VariantID:
     YearCode: 1
-    IsRepose: 0
+    IsRepose: 1
     IsAltDeco: 0
     IsLightCore: 0
     IsSuperCharger: 0
-    DecoID: 0
+    DecoID: 4
   NameOverride: 

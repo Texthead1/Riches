@@ -60,6 +60,9 @@ namespace PortalToUnity
         public bool Active { get; private set; }
         public virtual bool IsDigital => false;
 
+        public string GetName() => PortalDatabase.NameFromID(ID);
+        public PortalInfo GetPortalInfo() => PortalDatabase.PortalFromID(ID);
+
         protected PortalOfPower()
         {
             for (byte i = 0; i < FIGURE_INDICIES_COUNT; i++)
@@ -161,9 +164,6 @@ namespace PortalToUnity
                 }
             }
         }
-
-        public string GetName() => PortalDatabase.NameFromID(ID);
-        public PortalInfo GetPortalInfo() => PortalDatabase.PortalFromID(ID);
 
         private byte[] ConstructCommand(char commandChar, params byte[] commandArgs)
         {
@@ -502,17 +502,18 @@ namespace PortalToUnity
             finally { cts.Dispose(); }
         }
 
-        public virtual void PlayAudio(AudioClip sound)
+        public virtual void PlayAudio(AudioClip audioClip)
         {
             const int chunkSize = 16;
             int currentPosition = 0;
-            int sampleCount = sound.samples;
+            int sampleCount = audioClip.samples;
             float[] samples = new float[chunkSize];
             byte[] data = new byte[chunkSize * 2];
 
+            PTUManager.Log($"Started playing {audioClip.name} on Traptanium Portal", LogPriority.Low);
             while (currentPosition < sampleCount)
             {
-                sound.GetData(samples, currentPosition);
+                audioClip.GetData(samples, currentPosition);
 
                 for (int num = 0; num < samples.Length; num++)
                 {
@@ -530,6 +531,7 @@ namespace PortalToUnity
                 }
                 currentPosition += chunkSize;
             }
+            PTUManager.Log($"Finished playing {audioClip.name} on Traptanium Portal", LogPriority.Low);
         }
 
         public async Task PlayTraptaniumAudio(AudioClip audioClip, float audioMult = 1)
@@ -543,7 +545,6 @@ namespace PortalToUnity
             byte[] sampleData = new byte[TRANSFER_SIZE * 2];
 
             PTUManager.Log($"Started playing {audioClip.name} on Traptanium Portal", LogPriority.Low);
-
             await UnityMainThreadDispatcher.Instance().EnqueueAsync(() =>
             {
                 audioClip.GetData(samples, position);
@@ -584,7 +585,6 @@ namespace PortalToUnity
                             throw new PortalToUnityException("Could not transfer audioclip data successfully");
                         }
                     }
-
                     position += TRANSFER_SIZE;
                     samples = nextSamples;
                 }

@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace PortalToUnity
 {
-
     public enum LogPriority
     {
         High,
@@ -11,7 +10,7 @@ namespace PortalToUnity
         Low
     }
 
-    internal class PTUManager : MonoBehaviour
+    public class PTUManager : MonoBehaviour
     {
         [SerializeField] private LoggingLevel _loggingLevel;
 

@@ -3,6 +3,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using libusbK;
+using UnityEditor;
+using UnityEngine;
 
 namespace PortalToUnity
 {
@@ -25,6 +27,10 @@ namespace PortalToUnity
         public const int SECTOR_PERMISSION_FULL = 0x69080F7F;
         public const int DATA_REGION0_OFFSET = 0x08;
         public const int DATA_REGION1_OFFSET = 0x24;
+
+        // The audio configuration for the Traptanium Speaker, requires 8000hz mono audio
+        public const int AUDIO_TARGET_SAMPLE_RATE = 8000;
+        public const int AUDIO_TARGET_CHANNELS = 1;
 
         public static bool IsPortalOfPower(this KLST_DEVINFO_HANDLE info) => info.Common.Vid == PORTAL_VENDOR_ID && info.Common.Pid == PORTAL_PRODUCT_ID;
         public static string BytesToHexString(byte[] data) => string.Join(" ", data.Select(x => x.ToString("X2")));
@@ -84,6 +90,80 @@ namespace PortalToUnity
                 hexString.Append($"{bytes[i]:X2} ");
             }
             return hexString.ToString();
+        }
+
+        public static string GetSelectedPathOrFallback()
+        {
+            string path = AssetDatabase.GetAssetPath(Selection.activeObject);
+
+            if (string.IsNullOrEmpty(path))
+                return "Assets/Portal-To-Unity/";
+
+            if (!AssetDatabase.IsValidFolder(path))
+                path = System.IO.Path.GetDirectoryName(path);
+
+            return path;
+        }
+
+        // Basic audio resampling implementation. Is inferior to Unity's Import Settings and other converters, so I suggest pre-converting your audio instead of using this method
+        public static AudioClip ResampleAudioClipForTraptanium(AudioClip clip)
+        {
+            if (clip.frequency == AUDIO_TARGET_SAMPLE_RATE && clip.channels == AUDIO_TARGET_CHANNELS)
+                return clip;
+
+            float[] audioData = new float[clip.samples * clip.channels];
+            clip.GetData(audioData, 0);
+
+            float[] convertedData = ResampleAudio(audioData, clip.frequency, clip.channels);
+            convertedData = ConvertChannels(convertedData, clip.channels);
+
+            int newSampleCount = Mathf.FloorToInt((float)convertedData.Length / AUDIO_TARGET_CHANNELS);
+            AudioClip newClip = AudioClip.Create($"{clip.name} (Resampled)", newSampleCount, AUDIO_TARGET_CHANNELS, AUDIO_TARGET_SAMPLE_RATE, false);
+            newClip.SetData(convertedData, 0);
+
+            return newClip;
+
+            static float[] ConvertChannels(float[] inputData, int inputChannels)
+            {
+                if (inputChannels == AUDIO_TARGET_CHANNELS)
+                    return inputData;
+
+                int sampleCount = inputData.Length / inputChannels;
+                float[] outputData = new float[sampleCount * AUDIO_TARGET_CHANNELS];
+
+                if (inputChannels == 2)
+                {
+                    for (int i = 0; i < sampleCount; i++)
+                        outputData[i] = (inputData[i * 2] + inputData[i * 2 + 1]) / 2;
+                }
+                else
+                    Debug.LogError("Unsupported channel conversion. Audio Clip must be Mono or Stereo for conversion");
+
+                return outputData;
+            }
+
+            static float[] ResampleAudio(float[] inputData, int inputSampleRate, int channels)
+            {
+                if (inputSampleRate == AUDIO_TARGET_SAMPLE_RATE)
+                    return inputData;
+
+                int inputSampleCount = inputData.Length / channels;
+                int targetSampleCount = Mathf.FloorToInt(inputSampleCount * (AUDIO_TARGET_SAMPLE_RATE / (float)inputSampleRate));
+                float[] outputData = new float[targetSampleCount * channels];
+
+                for (int i = 0; i < targetSampleCount; i++)
+                {
+                    float inputIndex = i * (inputSampleRate / (float)AUDIO_TARGET_SAMPLE_RATE);
+                    int index = Mathf.FloorToInt(inputIndex) * channels;
+
+                    for (int channel = 0; channel < channels; channel++)
+                    {
+                        if (index < inputData.Length - channels)
+                            outputData[i * channels + channel] = inputData[index + channel];
+                    }
+                }
+                return outputData;
+            }
         }
     }
 }

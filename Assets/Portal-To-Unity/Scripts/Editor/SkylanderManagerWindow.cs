@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Threading.Tasks;
 
 namespace PortalToUnity
 {
@@ -16,6 +17,7 @@ namespace PortalToUnity
         private Dictionary<SkylanderVariant, bool> foldoutStates = new Dictionary<SkylanderVariant, bool>();
         private Dictionary<string, bool> groupFoldoutStates = new Dictionary<string, bool>();
         string[] groupLabelNames = new string[7] { "Spyro's Adventure", "Giants", "SWAP Force", "Trap Team", "SuperChargers", "Imaginators", "Unknown" };
+        private bool refreshingSkylanders = false;
 
         [MenuItem("Portal-To-Unity/Skylanders Database")]
         public static void ShowWindow()
@@ -25,7 +27,9 @@ namespace PortalToUnity
 
         public void OnGUI()
         {
-            OnEnable();
+            if (!refreshingSkylanders)
+                LoadSkylanders();
+
             EditorGUILayout.BeginHorizontal();
 
             GUIStyle boldStyle = new GUIStyle(GUI.skin.label);
@@ -40,7 +44,7 @@ namespace PortalToUnity
             {
                 boldStyle.wordWrap = true;
                 leftScrollPos = EditorGUILayout.BeginScrollView(leftScrollPos);
-                EditorGUILayout.LabelField("Please add Skylanders to the database by putting them in \"Assets/Resources/Portal-To-Unity/Figures\"", boldStyle);
+                EditorGUILayout.LabelField("Please add Skylanders to the database by putting them in \"Assets/Resources/Portal-To-Unity/Figures/\"", boldStyle);
                 e = Event.current;
                 if (e.type == EventType.ContextClick)
                     ShowContextOption("Open File Location", "Assets/Resources/Portal-To-Unity/Figures/");
@@ -155,7 +159,24 @@ namespace PortalToUnity
 
         private void OnEnable()
         {
-            skylanders = Resources.LoadAll<Skylander>("Portal-To-Unity/Figures").ToList();
+            LoadSkylanders();
+            InspectSkylanders();
+        }
+
+        private void OnDisable()
+        {
+            refreshingSkylanders = false;           
+        }
+
+        private async void LoadSkylanders()
+        {
+            refreshingSkylanders = true;
+            while (refreshingSkylanders)
+            {
+                skylanders = Resources.LoadAll<Skylander>("Portal-To-Unity/Figures/").ToList();
+                await Task.Delay(750);
+            }
+            refreshingSkylanders = false;
         }
 
         private void ShowContextOption(string text, string path)
@@ -176,5 +197,27 @@ namespace PortalToUnity
         private void OpenFileLocation(string path) => EditorUtility.RevealInFinder(path);
 
         private void OpenFileLocation(string path, Skylander file) => OpenFileLocation(path + file.name + ".asset");
+
+        private void InspectSkylanders()
+        {
+            HashSet<SkylanderVariant> skylanderVariants = new HashSet<SkylanderVariant>(Resources.LoadAll<SkylanderVariant>("Portal-To-Unity/Figures/"));
+            Debug.Log($"Loaded {skylanders.Count} Skylanders and {skylanderVariants.Count} variants (approx. {skylanders.Count + skylanderVariants.Count} unique figures)");
+
+            foreach (Skylander skylander in skylanders)
+            {
+                foreach (SkylanderVariant variant in skylander.Variants)
+                {
+                    if (skylanderVariants.Contains(variant))
+                        skylanderVariants.Remove(variant);
+                }
+            }
+
+            if (skylanderVariants.Count > 0)
+            {
+                Debug.LogError("Unreferenced Skylander variants:");
+                foreach (SkylanderVariant unreferencedVariant in skylanderVariants)
+                    Debug.LogError(unreferencedVariant.name);
+            }
+        }
     }
 }

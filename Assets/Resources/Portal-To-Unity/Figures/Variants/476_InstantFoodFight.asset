@@ -17,7 +17,7 @@ MonoBehaviour:
   VariantID:
     YearCode: 3
     IsRepose: 0
-    IsAltDeco: 0
+    IsAltDeco: 1
     IsLightCore: 0
     IsSuperCharger: 0
     DecoID: 15
