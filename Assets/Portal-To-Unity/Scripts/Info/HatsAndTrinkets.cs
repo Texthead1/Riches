@@ -46,7 +46,7 @@ namespace PortalToUnity
 		WabbitEars = 19,
 		[Description("Tropical Turban")]
 		TropicalTurban = 20,
-		[Description("Ched Hat")]
+		[Description("Chef Hat")]
 		Chef = 21,
 		[Description("Cowboy Hat")]
 		Cowboy = 22,

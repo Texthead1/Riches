@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: SWAP Force Portal of Power
   ID: 0203
+  LEDType: 0
   SupportedCommands: 410043005100520053005700

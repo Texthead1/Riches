@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Spyro's Adventure 3DS Portal of Power
   ID: 0134
+  LEDType: 3
   SupportedCommands: 410043005100520053005700

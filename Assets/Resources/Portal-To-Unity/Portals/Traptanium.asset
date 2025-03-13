@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Traptanium Portal
   ID: 0218
+  LEDType: 1
   SupportedCommands: 4100420043004a004c004d0051005200530056005700

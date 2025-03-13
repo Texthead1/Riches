@@ -17,7 +17,7 @@ namespace PortalToUnity
         private Dictionary<string, bool> groupFoldoutStates = new Dictionary<string, bool>();
         string[] groupLabelNames = new string[7] { "Spyro's Adventure", "Giants", "SWAP Force", "Trap Team", "SuperChargers", "Imaginators", "Unknown" };
 
-        [MenuItem("Portal-To-Unity/View Skylanders Database")]
+        [MenuItem("Portal-To-Unity/Skylanders Database")]
         public static void ShowWindow()
         {
             GetWindow<SkylanderManagerWindow>("Skylanders Database");
@@ -27,68 +27,68 @@ namespace PortalToUnity
         {
             OnEnable();
             EditorGUILayout.BeginHorizontal();
+
             GUIStyle boldStyle = new GUIStyle(GUI.skin.label);
             boldStyle.fontStyle = FontStyle.Bold;
             boldStyle.fontSize = 14;
 
             Event e;
 
-            if (skylanders != null)
+            if (skylanders == null) return;
+    
+            if (skylanders.Count == 0)
             {
-                if (skylanders.Count == 0)
-                {
-                    boldStyle.wordWrap = true;
-                    leftScrollPos = EditorGUILayout.BeginScrollView(leftScrollPos);
-                    EditorGUILayout.LabelField("Please add Skylanders to the database by putting them in \"Assets/Resources/Portal-To-Unity/Figures\"", boldStyle);
-                    e = Event.current;
-                    if (e.type == EventType.ContextClick)
-                        ShowContextOption("Open File Location", "Assets/Resources/Portal-To-Unity/Figures/");
-                    selectedSkylander = null;
-                    EditorGUILayout.EndScrollView();
-                    EditorGUILayout.EndHorizontal();
-                    return;
-                }
-                else 
-                {
-                    skylanders = skylanders.OrderBy(x => x.CharacterID).ToList();
-                    leftScrollPos = EditorGUILayout.BeginScrollView(leftScrollPos, GUILayout.Width(position.width * leftPanelWidth));
-                    IEnumerable<Skylander>[] groups = new IEnumerable<Skylander>[6];
-                    var remaining = new List<Skylander>(skylanders);
-                    groups[0] = remaining.Where(x => x.CharacterID.IsSSA() || x.CharacterID.IsTFB_Item() && (int)x.CharacterID < ToyCodeExtensions.TFB_BattlePieces_Low || (int)x.CharacterID >= ToyCodeExtensions.TFB_Expansions_Low && (int)x.CharacterID < 305 || x.CharacterID == ToyCode.Mini_Terrabite || x.CharacterID == ToyCode.Mini_GillRunt || x.CharacterID == ToyCode.Mini_TriggerSnappy || x.CharacterID == ToyCode.Mini_WhisperElf).ToList();
-                    remaining.RemoveAll(x => groups[0].Contains(x));
-                    groups[1] = remaining.Where(x => x.CharacterID.IsGiants() || x.CharacterID.IsTFB_BattlePiece() || x.CharacterID.IsMini() && (int)x.CharacterID > 539).ToList();
-                    remaining.RemoveAll(x => groups[1].Contains(x));
-                    groups[2] = remaining.Where(x => x.CharacterID.IsSwapForce() || x.CharacterID.IsSwapPart() || (int)x.CharacterID >= ToyCodeExtensions.VV_Items_Low && (int)x.CharacterID < ToyCodeExtensions.Vehicles_Low || x.CharacterID.IsVV_Expansion()).ToList();
-                    remaining.RemoveAll(x => groups[2].Contains(x));
-                    groups[3] = remaining.Where(x => x.CharacterID.IsTrapTeam() || x.CharacterID.IsMini() || (int)x.CharacterID != 235 && (int)x.CharacterID >= ToyCodeExtensions.Traps_Low && (int)x.CharacterID < 310 || x.CharacterID.IsTrapTeam_Debug()).ToList();
-                    remaining.RemoveAll(x => groups[3].Contains(x));
-                    groups[4] = remaining.Where(x => x.CharacterID.IsVehicle() || (int)x.CharacterID >= ToyCodeExtensions.SuperChargers_Low && (int)x.CharacterID <= ToyCodeExtensions.TemplateVehicle_High).ToList();
-                    remaining.RemoveAll(x => groups[4].Contains(x));
-                    groups[5] = remaining;
+                boldStyle.wordWrap = true;
+                leftScrollPos = EditorGUILayout.BeginScrollView(leftScrollPos);
+                EditorGUILayout.LabelField("Please add Skylanders to the database by putting them in \"Assets/Resources/Portal-To-Unity/Figures\"", boldStyle);
+                e = Event.current;
+                if (e.type == EventType.ContextClick)
+                    ShowContextOption("Open File Location", "Assets/Resources/Portal-To-Unity/Figures/");
+                selectedSkylander = null;
+                EditorGUILayout.EndScrollView();
+                EditorGUILayout.EndHorizontal();
+                return;
+            }
+            skylanders = skylanders.OrderBy(x => x.CharacterID).ToList();
+            leftScrollPos = EditorGUILayout.BeginScrollView(leftScrollPos, GUILayout.Width(position.width * leftPanelWidth));
+            IEnumerable<Skylander>[] groups = new IEnumerable<Skylander>[6];
 
-                    for (int i = 0; i < groups.Length; i++)
+            List<Skylander> remaining = new List<Skylander>(skylanders);
+            groups[0] = remaining.Where(x => x.CharacterID.IsSSA() || x.CharacterID.IsTFB_Item() && (int)x.CharacterID < ToyCodeExtensions.TFB_BattlePieces_Low || (int)x.CharacterID >= ToyCodeExtensions.TFB_Expansions_Low && (int)x.CharacterID < 305 || x.CharacterID == ToyCode.Mini_Terrabite || x.CharacterID == ToyCode.Mini_GillRunt || x.CharacterID == ToyCode.Mini_TriggerSnappy || x.CharacterID == ToyCode.Mini_WhisperElf).ToList();
+            remaining.RemoveAll(x => groups[0].Contains(x));
+            groups[1] = remaining.Where(x => x.CharacterID.IsGiants() || x.CharacterID.IsTFB_BattlePiece() || x.CharacterID.IsMini() && (int)x.CharacterID > 539).ToList();
+            remaining.RemoveAll(x => groups[1].Contains(x));
+            groups[2] = remaining.Where(x => x.CharacterID.IsSwapForce() || x.CharacterID.IsSwapPart() || (int)x.CharacterID >= ToyCodeExtensions.VV_Items_Low && (int)x.CharacterID < ToyCodeExtensions.Vehicles_Low || x.CharacterID.IsVV_Expansion()).ToList();
+            remaining.RemoveAll(x => groups[2].Contains(x));
+            groups[3] = remaining.Where(x => x.CharacterID.IsTrapTeam() || x.CharacterID.IsMini() || (int)x.CharacterID != 235 && (int)x.CharacterID >= ToyCodeExtensions.Traps_Low && (int)x.CharacterID < 310 || x.CharacterID.IsTrapTeam_Debug()).ToList();
+            remaining.RemoveAll(x => groups[3].Contains(x));
+            groups[4] = remaining.Where(x => x.CharacterID.IsVehicle() || (int)x.CharacterID >= ToyCodeExtensions.SuperChargers_Low && (int)x.CharacterID <= ToyCodeExtensions.TemplateVehicle_High).ToList();
+            remaining.RemoveAll(x => groups[4].Contains(x));
+            groups[5] = remaining;
+
+            for (int i = 0; i < groups.Length; i++)
+            {
+                IEnumerable<Skylander> group = groups[i];
+
+                if (!groupFoldoutStates.ContainsKey(i.ToString()))
+                    groupFoldoutStates[i.ToString()] = EditorPrefs.GetBool($"GroupFoldoutState_{i}", true);
+
+                groupFoldoutStates[i.ToString()] = EditorGUILayout.Foldout(groupFoldoutStates[i.ToString()], groupLabelNames[i], true);
+                EditorPrefs.SetBool($"GroupFoldoutState_{i}", groupFoldoutStates[i.ToString()]);
+
+                if (groupFoldoutStates[i.ToString()])
+                {
+                    foreach (Skylander skylander in group)
                     {
-                        var group = groups[i];
+                        bool button = GUILayout.Button(skylander.Prefix == string.Empty ? skylander.Name : $"{skylander.Prefix} {skylander.Name}");
+                        e = Event.current;
 
-                        if (!groupFoldoutStates.ContainsKey(i.ToString()))
-                            groupFoldoutStates[i.ToString()] = EditorPrefs.GetBool($"GroupFoldoutState_{i}", true);
+                        if (!mouseOverWindow) continue;
 
-                        groupFoldoutStates[i.ToString()] = EditorGUILayout.Foldout(groupFoldoutStates[i.ToString()], groupLabelNames[i], true);
-                        EditorPrefs.SetBool($"GroupFoldoutState_{i}", groupFoldoutStates[i.ToString()]);
-
-                        if (groupFoldoutStates[i.ToString()])
-                        {
-                            foreach (var skylander in group)
-                            {
-                                var button = GUILayout.Button(skylander.Prefix == string.Empty ? skylander.Name : $"{skylander.Prefix} {skylander.Name}");
-                                e = Event.current;
-
-                                if (GUILayoutUtility.GetLastRect().Contains(e.mousePosition) && e.button == 1 && mouseOverWindow == this)
-                                    ShowContextOption("Show Skylander in Explorer", "Assets/Resources/Portal-To-Unity/Figures/", skylander);
-                                else if (button && e.button != 11 && mouseOverWindow == this)
-                                    selectedSkylander = skylander;
-                            }
-                        }
+                        if (GUILayoutUtility.GetLastRect().Contains(e.mousePosition) && e.button == 1)
+                            ShowContextOption("Show Skylander in Explorer", "Assets/Resources/Portal-To-Unity/Figures/", skylander);
+                        else if (button && e.button != 1)
+                            selectedSkylander = skylander;
                     }
                 }
             }
@@ -113,7 +113,7 @@ namespace PortalToUnity
 
                 try
                 {                
-                    foreach (var variant in selectedSkylander.Variants)
+                    foreach (SkylanderVariant variant in selectedSkylander.Variants)
                     {
                         if (variant == null) continue;
                         

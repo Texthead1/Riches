@@ -66,7 +66,7 @@ namespace PortalToUnity
         {
             Presence = FigurePresence.NotPresent;
 
-            var allocSize = sizeof(SpyroTag_TagHeader);
+            int allocSize = sizeof(SpyroTag_TagHeader);
             TagHeader = (SpyroTag_TagHeader*)Marshal.AllocHGlobal(allocSize);
 
             for (int i = 0; i < sizeof(SpyroTag_TagHeader); i++)

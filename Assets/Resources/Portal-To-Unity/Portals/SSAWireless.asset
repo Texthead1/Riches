@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Spyro's Adventure Portal of Power (Wireless)
   ID: 0129
+  LEDType: 0
   SupportedCommands: 410043005100520053005700

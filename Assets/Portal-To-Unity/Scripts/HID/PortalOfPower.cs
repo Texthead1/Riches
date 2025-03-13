@@ -163,6 +163,7 @@ namespace PortalToUnity
         }
 
         public string GetName() => PortalDatabase.NameFromID(ID);
+        public PortalInfo GetPortalInfo() => PortalDatabase.PortalFromID(ID);
 
         private byte[] ConstructCommand(char commandChar, params byte[] commandArgs)
         {
@@ -440,7 +441,7 @@ namespace PortalToUnity
                         {
                             SetResult(tcs, tcsLock, x => x.TrySetResult(true));
                         }
-                        else if (retryCount < 2)
+                        else if (retryCount < 5)
                         {
                             retryCount++;
                             query = false;
@@ -448,7 +449,7 @@ namespace PortalToUnity
                             COMMAND_RequestStatus();
                         }
                         else
-                            SetResult(tcs, tcsLock, x => x.TrySetException(new FigureErrorException("The figure being queried could not be read successfully.")));
+                            SetResult(tcs, tcsLock, x => x.TrySetException(new FigureErrorException("The figure being written to could not be read successfully.")));
                     }
 
                     if (input[0] != (byte)'S')
@@ -464,7 +465,7 @@ namespace PortalToUnity
                         COMMAND_FigureWrite(index, block, data);
                     }
                     else
-                        SetResult(tcs, tcsLock, x => x.TrySetException(new FigureRemovedException("The figure being queried was removed.")));
+                        SetResult(tcs, tcsLock, x => x.TrySetException(new FigureRemovedException("The figure being written to was removed.")));
                 }
                 catch (Exception ex)
                 {
@@ -485,7 +486,7 @@ namespace PortalToUnity
                 COMMAND_FigureWrite(index, block, data);
                 try
                 {
-                    await Task.Delay(150, cts.Token);
+                    await Task.Delay(450, cts.Token);
                 }
                 catch (TaskCanceledException) { break; }
                 timeout++;
@@ -543,21 +544,18 @@ namespace PortalToUnity
 
             PTUManager.Log($"Started playing {audioClip.name} on Traptanium Portal", LogPriority.Low);
 
-            TaskCompletionSource<bool> tcs = new TaskCompletionSource<bool>();
-            UnityMainThreadDispatcher.Instance().Enqueue(() =>
+            await UnityMainThreadDispatcher.Instance().EnqueueAsync(() =>
             {
                 audioClip.GetData(samples, position);
-                tcs.SetResult(true);
             });
-            await tcs.Task;
 
-            Task task = Task.Run(async () =>
+            new Thread(async () =>
             {
                 while (position < sampleCount)
                 {
                     float[] nextSamples = new float[TRANSFER_SIZE];
                     
-                    UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                    await UnityMainThreadDispatcher.Instance().EnqueueAsync(() =>
                     {
                         // Check that we're not exceeding past the amount of samples present in the file when grabbing future ones
                         if (sampleCount - (position + TRANSFER_SIZE) >= 0)
@@ -590,8 +588,7 @@ namespace PortalToUnity
                     position += TRANSFER_SIZE;
                     samples = nextSamples;
                 }
-            });
-            await task;
+            }).Start();
             PTUManager.Log("Finished playing AudioClip", LogPriority.Low);
         }
 

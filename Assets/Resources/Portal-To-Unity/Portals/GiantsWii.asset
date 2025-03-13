@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Name: Giants Portal of Power (Wii?)
   ID: 013c
+  LEDType: 0
   SupportedCommands: 410043005100520053005700

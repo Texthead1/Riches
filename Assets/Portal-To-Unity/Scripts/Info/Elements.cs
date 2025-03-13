@@ -25,7 +25,7 @@ namespace PortalToUnity
 
         static Elements()
         {
-            // Declares Portal colors for each Portal of Power
+            // Declares Portal colors for each element
             // The first set are the regular Portal element colors, using the color ripped from either Giants or Imaginators (TFB and (mostly) VV respectively)
             // Imaginators was used to rip the VV colors as it's Portal color system is similar to SuperChargers, just with some fixes
             // The second and third sets are the two different colors the sides of the Traptanium Portal oscillate between
@@ -102,7 +102,7 @@ namespace PortalToUnity
                 0x0B
             ));
             
-            // Because TFB colors were ripped from Giants, there are no respective Portal colors for the Light, Dark, or Kaos elements (who normally mimicks the Dark color)
+            // Because TFB colors were ripped from Giants, there are no respective Portal colors for the Light, Dark, or Kaos elements (who normally mimics the Dark color)
 
             Colors.Add(Element.Light, Construct
             (

@@ -168,6 +168,12 @@ public class RichesManager : MonoBehaviour
 
             if (!SkylanderDatabase.GetSkylander(characterID, out Skylander skylander)) return;
 
+            PortalInfo portalInfo = figure.Parent.GetPortalInfo();
+
+            int colorIndex = -1;
+            if (portalInfo != default)
+                colorIndex = portalInfo.LEDType == LEDType.Enhanced ? (int)LEDType.FullColor : (int)portalInfo.LEDType;
+
             switch (skylander.Type)
             {
                 case SkyType.Skylander:
@@ -178,7 +184,8 @@ public class RichesManager : MonoBehaviour
                 case SkyType.Mini:
                 case SkyType.SWAPForceTop:
                     if (!ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait", false)) throw new Exception();
-                    Portal?.COMMAND_SetLEDColor(Elements.Colors[skylander.Element][0]);
+                    if (portalInfo.LEDType != LEDType.None)
+                        Portal?.COMMAND_SetLEDColor(Elements.Colors[skylander.Element][colorIndex]);
 
                     figure.TagBuffer = new FigType_Skylander(figure);
                     FigType_Skylander sky = (FigType_Skylander)figure.TagBuffer;
@@ -205,7 +212,8 @@ public class RichesManager : MonoBehaviour
                 case SkyType.CreationCrystal:
                 case SkyType.Imaginator:
                     if (!ShowAlert("Reading", $"Giving {skylander.Name} max money. Please wait", false)) throw new Exception();
-                    Portal?.COMMAND_SetLEDColor(Elements.Colors[skylander.Element][0]);
+                    if (portalInfo.LEDType != LEDType.None)
+                        Portal?.COMMAND_SetLEDColor(Elements.Colors[skylander.Element][colorIndex]);
 
                     figure.TagBuffer = new FigType_CreationCrystal(figure);
                     FigType_CreationCrystal cc = (FigType_CreationCrystal)figure.TagBuffer;
