@@ -98,6 +98,7 @@ public class RichesManager : MonoBehaviour
                 ShowAlert("No Portal Found", "Please plug in a Portal of Power with the libusbK driver");
                 return;
             }
+
             if (finishedFigures.Count > 0)
             {
                 (ToyCode characterID, VariantID variantID) = GetCharacterAndVariantIDs(finishedFigures[0]);
@@ -129,7 +130,8 @@ public class RichesManager : MonoBehaviour
                 }
                 return;
             }
-            alertedFigure = null;
+            if (alertedFigure?.Parent.currentlyQueryingFigure != alertedFigure)
+                alertedFigure = null;
             alert.SetActive(false);
             Portal?.COMMAND_SetLEDColor(0x00, 0x00, 0x00);
         });
@@ -195,7 +197,8 @@ public class RichesManager : MonoBehaviour
 
                     unsafe { sky.SpyroTag->magicMomentRegion0.money = ushort.MaxValue; }
 
-                    if (!ShowAlert("Writing", false)) throw new Exception();
+                    if (PortalOfPower.Instances.Count == 1)
+                        if (!ShowAlert("Writing", false)) throw new Exception();
 
                     await sky.SetMagicMoment0();
                     await sky.SetRemainingData0();
@@ -204,7 +207,8 @@ public class RichesManager : MonoBehaviour
 
                     if (figure.Parent.FiguresInQueue.Count == 0)
                     {
-                        if (!ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power", false)) throw new Exception();
+                        if (PortalOfPower.Instances.Count == 1)
+                            if (!ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power", false)) throw new Exception();
                         Portal?.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
                     }
                     break;
@@ -222,8 +226,8 @@ public class RichesManager : MonoBehaviour
                     await cc.FetchRemainingData();
 
                     unsafe { cc.SpyroTag->magicMoment.money = ushort.MaxValue; }
-
-                    if (!ShowAlert("Writing", false)) throw new Exception();
+                    if (PortalOfPower.Instances.Count == 1)
+                        if (!ShowAlert("Writing", false)) throw new Exception();
 
                     await cc.SetMagicMoment();
                     await cc.SetRemainingData();
@@ -232,7 +236,8 @@ public class RichesManager : MonoBehaviour
 
                     if (figure.Parent.FiguresInQueue.Count == 0)
                     {
-                        if (!ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power", false)) throw new Exception();
+                        if (PortalOfPower.Instances.Count == 1)
+                            if (!ShowAlert("Finished Writing", $"You can now remove {skylander.Name} from the Portal of Power", false)) throw new Exception();
                         Portal?.COMMAND_SetLEDColor(0xFF, 0xFF, 0xFF);
                     }
                     break;
@@ -286,17 +291,17 @@ public class RichesManager : MonoBehaviour
         finally
         {
             figure.Parent.currentlyQueryingFigure = null;
-            await FigureNoLongerBeingQueried(figure);
+            await FigureNoLongerBeingQueried(figure.Parent);
             cts = new CancellationTokenSource();
         }
     }
 
-    private async Task FigureNoLongerBeingQueried(PortalFigure figure)
+    private async Task FigureNoLongerBeingQueried(PortalOfPower portal)
     {
-        if (figure.Parent.FiguresInQueue.Count > 0 && PortalOfPower.Instances.Count == 1)
+        if (portal.FiguresInQueue.Count > 0 && PortalOfPower.Instances.Count == 1)
         {
-            PortalFigure queuedFigure = figure.Parent.FiguresInQueue[0];
-            figure.Parent.FiguresInQueue.Remove(figure.Parent.FiguresInQueue[0]);
+            PortalFigure queuedFigure = portal.FiguresInQueue[0];
+            portal.FiguresInQueue.Remove(portal.FiguresInQueue[0]);
             await DoFigure(queuedFigure);
         }
     }
@@ -318,6 +323,8 @@ public class RichesManager : MonoBehaviour
             }
             return;
         }
+        portal.OnFigureAdded += PortalFigureAdded;
+        portal.OnFigureRemoved += PortalFigureRemoved;
         ShowAlert("Too Many Portals", "Please ensure only one Portal of Power is plugged in at a time");
     }
 
@@ -343,9 +350,6 @@ public class RichesManager : MonoBehaviour
                 PortalOfPower _portal = PortalOfPower.Instances[0];
                 Portal = _portal;
                 
-                _portal.OnFigureAdded += PortalFigureAdded;
-                _portal.OnFigureRemoved += PortalFigureRemoved;
-                
                 HideAlert();
 
                 if (Portal?.FiguresInQueue.Count > 0 && Portal == _portal)
@@ -360,15 +364,29 @@ public class RichesManager : MonoBehaviour
             Portal = null;
             return;
         }
-        if (PortalOfPower.Instances.Count == 1)
-            HideAlert();
+
+        if (PortalOfPower.Instances.Count != 1) return;
+
+        HideAlert();
+        if (Portal?.FiguresInQueue.Count > 0)
+        {
+            PortalFigure queuedFigure = Portal?.FiguresInQueue[0];
+            Portal?.FiguresInQueue.Remove(Portal?.FiguresInQueue[0]);
+            await DoFigure(queuedFigure);
+        }
     }
+
     private async void PortalFigureAdded(PortalFigure figure)
     {
-        if (figure.Parent == Portal && PortalOfPower.Instances.Count == 1)
+        if (figure.Parent == Portal)
         {
-            await DoFigure(figure);
+            if (figure.Parent.currentlyQueryingFigure == null && PortalOfPower.Instances.Count == 1)
+                await DoFigure(figure);
+            else
+                figure.Parent.FiguresInQueue.Add(figure);
+            return;
         }
+        figure.Parent.FiguresInQueue.Add(figure);
     }
 
     private async void PortalFigureRemoved(PortalFigure figure, FigureDepartInfo info)
@@ -379,13 +397,14 @@ public class RichesManager : MonoBehaviour
         if (figure.Parent.currentlyQueryingFigure == figure)
         {
             figure.Parent.currentlyQueryingFigure = null;
-            await FigureNoLongerBeingQueried(figure);
+            await FigureNoLongerBeingQueried(figure.Parent);
         }
 
         if (finishedFigures.Contains(figure))
         {
             finishedFigures.Remove(figure);
-            if (alertedFigure == figure)
+
+            if (alertedFigure == figure && PortalOfPower.Instances.Count == 1)
             {
                 alertedFigure = null;
                 HideAlert();

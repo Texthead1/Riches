@@ -30,6 +30,7 @@ namespace PortalToUnity
             // Imaginators was used to rip the VV colors as it's Portal color system is similar to SuperChargers, just with some fixes
             // The second and third sets are the two different colors the sides of the Traptanium Portal oscillate between
             // The last remaining value is a unique color for 3DS (blue only) Portals. At the moment, it just mirrors the B value from the first set of colors
+            // maybe scriptable-object-ify this implementation
             Colors.Add(Element.None, Construct
             (
                 0x00, 0x00, 0x00,   // The original behavior would have the Portal freeze on the last color, not actually change to a black color

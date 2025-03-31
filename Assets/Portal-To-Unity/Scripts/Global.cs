@@ -92,6 +92,7 @@ namespace PortalToUnity
             return hexString.ToString();
         }
 
+#if UNITY_EDITOR
         public static string GetSelectedPathOrFallback()
         {
             string path = AssetDatabase.GetAssetPath(Selection.activeObject);
@@ -104,8 +105,9 @@ namespace PortalToUnity
 
             return path;
         }
+#endif
 
-        // Basic audio resampling implementation. Is inferior to Unity's Import Settings and other converters, so I suggest pre-converting your audio instead of using this method
+        // Basic audio resampling implementation. Is inferior to Unity's Import Settings and other converters, suggest pre-converting your audio, or improving this method in future
         public static AudioClip ResampleAudioClipForTraptanium(AudioClip clip)
         {
             if (clip.frequency == AUDIO_TARGET_SAMPLE_RATE && clip.channels == AUDIO_TARGET_CHANNELS)
@@ -137,7 +139,7 @@ namespace PortalToUnity
                         outputData[i] = (inputData[i * 2] + inputData[i * 2 + 1]) / 2;
                 }
                 else
-                    Debug.LogError("Unsupported channel conversion. Audio Clip must be Mono or Stereo for conversion");
+                    PTUManager.LogError("Unsupported channel conversion. AudioClip must be Mono or Stereo for conversion", LogPriority.High);
 
                 return outputData;
             }

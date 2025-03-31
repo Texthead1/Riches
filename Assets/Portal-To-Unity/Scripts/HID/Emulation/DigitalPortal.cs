@@ -56,6 +56,7 @@ namespace PortalToUnity
             await ReestablishPipes();
         }
 
+        // fix these, need to add id-grabbing layer of abstraction that was added to actual portal discovery
         private static void Connected()
         {
             PortalOfPower portal = new DigitalPortal();

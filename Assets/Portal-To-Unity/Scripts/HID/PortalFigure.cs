@@ -112,7 +112,7 @@ namespace PortalToUnity
                 }
                 return await Parent.WriteFigureAsync(Index, block, data);
             }
-            catch (Exception ex)
+            catch (Exception ex) // is this needed?
             {
                 PTUManager.LogException(ex, LogPriority.Low);
                 throw;

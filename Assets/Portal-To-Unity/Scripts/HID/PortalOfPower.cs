@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -34,34 +35,32 @@ namespace PortalToUnity
         public static Action<PortalOfPower> OnRawAdded;
         public static Action<PortalOfPower> OnRawRemoved;
         public static Action<PortalOfPower> OnPortalIOError;
+        public static List<PortalOfPower> Instances = new List<PortalOfPower>();
+        public static PortalOfPower WithHandle(KLST_DEVINFO_HANDLE handle) => Instances.FirstOrDefault(portal => portal.kHandle.Equals(handle));
 
         public Action<PortalOfPower, byte[]> OnInputReport;
         public Action<PortalFigure> OnFigureAdded;
         public Action<PortalFigure, FigureDepartInfo> OnFigureRemoved;
         public Action<PortalFigure> OnFinishedReadingFigure;
         public Action<PortalOfPower, byte[]> OnInterference;
-
-        public static List<PortalOfPower> Instances = new List<PortalOfPower>();
-        public static PortalOfPower WithHandle(KLST_DEVINFO_HANDLE handle) => Instances.FirstOrDefault(portal => portal.kHandle.Equals(handle));
-
         public UsbK kDevice;
         public KLST_DEVINFO_HANDLE kHandle;
         public PortalFigure[] Figures { get; private set; } = new PortalFigure[FIGURE_INDICIES_COUNT];
         public List<PortalFigure> FiguresInQueue = new List<PortalFigure>();
         public PortalFigure currentlyQueryingFigure;
 
-        internal PortalState State = PortalState.JustAdded;
-        private CancellationTokenSource bootCTS;
-        private CancellationTokenSource wirelessCTS = new CancellationTokenSource();
-        private List<(char commandChar, DateTime timestamp, bool returned)> commandQueue = new List<(char, DateTime, bool returned)>();
-        private readonly char[] priorityCommands = new char[] { 'A', 'M', 'Q', 'R', 'W' };
-
         public byte[] ID { get; private set; } = new byte[4];
         public bool Active { get; private set; }
         public virtual bool IsDigital => false;
 
-        public string GetName() => PortalDatabase.NameFromID(ID);
-        public PortalInfo GetPortalInfo() => PortalDatabase.PortalFromID(ID);
+        private bool isReading;
+        private CancellationTokenSource bootCTS;
+        private CancellationTokenSource wirelessCTS = new CancellationTokenSource();
+        private List<(char commandChar, DateTime timestamp, bool returned, byte[] extraInfo)> commandQueue = new List<(char, DateTime, bool returned, byte[] extraInfo)>();
+        private readonly char[] priorityCommands = new char[] { 'A', 'M', 'Q', 'R', 'W' };
+        
+        internal PortalState State = PortalState.JustAdded;
+
 
         protected PortalOfPower()
         {
@@ -77,6 +76,9 @@ namespace PortalToUnity
             for (byte i = 0; i < FIGURE_INDICIES_COUNT; i++)
                 Figures[i] = new PortalFigure(this, i);
         }
+
+        public string GetName() => PortalDatabase.NameFromID(ID);
+        public PortalInfo GetPortalInfo() => PortalDatabase.PortalFromID(ID);
 
         internal async Task SetUpPortal()
         {
@@ -135,6 +137,7 @@ namespace PortalToUnity
                 OnInputReport -= SetUpPortalSub;
                 return;
             }
+
             OnInputReport -= SetUpPortalSub;
             Instances.Add(this);
             OnAdded?.Invoke(this);
@@ -175,7 +178,8 @@ namespace PortalToUnity
 
         public void COMMAND_SetAntenna(bool active)
         {
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'A',
                 (byte)(active ? 0x01 : 0x00)
             );
@@ -190,7 +194,8 @@ namespace PortalToUnity
 
         public void COMMAND_SetLEDColor(byte r, byte g, byte b)
         {
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'C',
                 r,
                 g,
@@ -204,16 +209,13 @@ namespace PortalToUnity
         public void COMMAND_SetTraptaniumLEDColor(PortalLED side, byte r, byte g, byte b, short transitionTime)
         {
             if (side == PortalLED.Trap)
-            {
                 throw new ArgumentException("Traptanium Portal LED controlled via J command must either be left or right.");
-            }
 
             if (transitionTime == 0)
-            {
                 PTUManager.LogWarning("Transition time set to 0. Use the L command instead if you wish to set a Traptanium LED to a given color with no transition.", LogPriority.Low);
-            }
 
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'J',
                 (byte)side,
                 r,
@@ -229,7 +231,8 @@ namespace PortalToUnity
 
         public void COMMAND_SetTraptaniumLight(PortalLED led, byte r, byte g = 0, byte b = 0, byte unknown = 0)
         {
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'L',
                 (byte)led,
                 r,
@@ -244,7 +247,8 @@ namespace PortalToUnity
 
         public void COMMAND_SetTraptaniumSpeaker(bool active)
         {
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'M',
                 (byte)(active ? 0x01 : 0x00)
             );
@@ -253,7 +257,8 @@ namespace PortalToUnity
 
         public void COMMAND_FigureQuery(byte index, byte block)
         {
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'Q',
                 index,
                 block
@@ -275,7 +280,8 @@ namespace PortalToUnity
 
         public void COMMAND_SetLightAudioVibrancyTolerance(byte tolerance, byte unk0 = 0, byte unk1 = 0)
         {
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'V',
                 unk0,
                 unk1,
@@ -289,7 +295,8 @@ namespace PortalToUnity
             if (data.Length != BLOCK_SIZE)
                 throw new ArgumentException("Data array must be 16 bytes long.");
 
-            byte[] command = ConstructCommand(
+            byte[] command = ConstructCommand
+            (
                 'W',
                 index,
                 block
@@ -438,9 +445,7 @@ namespace PortalToUnity
                     if (query && input[0] == (byte)'W')
                     {
                         if ((input[1] & 0x10) != 0 && (input[1] & 0xF) == index && input[2] == block)
-                        {
                             SetResult(tcs, tcsLock, x => x.TrySetResult(true));
-                        }
                         else if (retryCount < 5)
                         {
                             retryCount++;
@@ -526,7 +531,7 @@ namespace PortalToUnity
 
                 if (!WriteRaw(data))
                 {
-                    /* FEEDBACK */ Debug.LogWarning("Audio transmission terminated. Portal write error, most likely as a result of it being disconnected");
+                    PTUManager.LogWarning("Audio transmission terminated. Portal write error, most likely as a result of it being disconnected", LogPriority.Low);
                     return;
                 }
                 currentPosition += chunkSize;
@@ -534,6 +539,8 @@ namespace PortalToUnity
             PTUManager.Log($"Finished playing {audioClip.name} on Traptanium Portal", LogPriority.Low);
         }
 
+        // investigate why there seems to be audio corruption with this method, but not the syncrhonous method
+        // heck, this method functions flawlessly in a different project, so what's happening here?
         public async Task PlayTraptaniumAudio(AudioClip audioClip, float audioMult = 1)
         {
             const int CHUNK_SIZE = 16;
@@ -545,10 +552,7 @@ namespace PortalToUnity
             byte[] sampleData = new byte[TRANSFER_SIZE * 2];
 
             PTUManager.Log($"Started playing {audioClip.name} on Traptanium Portal", LogPriority.Low);
-            await UnityMainThreadDispatcher.Instance().EnqueueAsync(() =>
-            {
-                audioClip.GetData(samples, position);
-            });
+            await UnityMainThreadDispatcher.Instance().EnqueueAsync(() => audioClip.GetData(samples, position));
 
             new Thread(async () =>
             {
@@ -581,15 +585,13 @@ namespace PortalToUnity
                         Array.Copy(sampleData, offset * 2, transferData, 0, CHUNK_SIZE * 2);
 
                         if (!WriteRaw(transferData))
-                        {
-                            throw new PortalToUnityException("Could not transfer audioclip data successfully");
-                        }
+                            throw new IOException("Could not transfer AudioClip data successfully");
                     }
                     position += TRANSFER_SIZE;
                     samples = nextSamples;
                 }
             }).Start();
-            PTUManager.Log("Finished playing AudioClip", LogPriority.Low);
+            PTUManager.Log($"Finished playing {audioClip.name} on Traptanium Portal", LogPriority.Low);
         }
 
         // HID READ/WRITE RELATED FUNCTIONS
@@ -599,25 +601,12 @@ namespace PortalToUnity
             char commandChar = (char)data[0];
             PTUManager.LogWarning($"OUTPUT ({commandChar}): {BytesToHexString(data)}", LogPriority.Low);
 
-            DateTime update = DateTime.Now;
-            (char, DateTime timestamp, bool returned) match = commandQueue.FirstOrDefault(x => x.commandChar == commandChar);
-            if (match != default)
-                match.returned = true;
-            commandQueue.RemoveAll(x => (update - x.timestamp).TotalMilliseconds >= (x.returned ? 150 : 800));
-
-            if (priorityCommands.Contains(commandChar))
-            {
-                (char, DateTime timestamp, bool returned) existingCommand = commandQueue.FirstOrDefault(x => x.commandChar == commandChar);
-
-                if (existingCommand != default)
-                    existingCommand.timestamp = update;
-                else
-                    commandQueue.Add((commandChar, update, false));
-            }
+            UpdateReportValidator(data, false);
 
             IntPtr dataBuffer = Marshal.AllocHGlobal(data.Length);
             Marshal.Copy(data, 0, dataBuffer, data.Length);
             bool success =  kDevice.ControlTransfer(SetupPacket(length), dataBuffer, length, out _, IntPtr.Zero);
+
             Marshal.FreeHGlobal(dataBuffer);
             return success;
         }
@@ -633,7 +622,77 @@ namespace PortalToUnity
             Length = (ushort)(0x0008 + length)
         };
 
-        private bool isReading;
+        private bool UpdateReportValidator(byte[] input, bool detectInterference)
+        {
+            char commandChar = (char)input[0];
+            DateTime update = DateTime.Now;
+
+            List<(char commandChar, DateTime timestamp, bool returned, byte[] extraInfo)> matches = commandQueue.Where(x => x.commandChar == commandChar).ToList();
+            (char commandChar, DateTime timestamp, bool returned, byte[] extraInfo) match = default;
+
+            if (commandChar != 'Q' && commandChar != 'W')
+                match = commandQueue.FirstOrDefault(x => x.commandChar == commandChar);
+            else
+            {
+                foreach (var newMatch in matches)
+                {
+                    byte[] sequence = new byte[newMatch.extraInfo.Length];
+                    Array.Copy(input, 1, sequence, 0, newMatch.extraInfo.Length);
+                    if (newMatch.extraInfo.SequenceEqual(sequence))
+                    {
+                        match = newMatch;
+                        break;
+                    }
+                    Debug.Log("OG: " + BytesToHexString(sequence));
+                    Debug.Log("Found: " + BytesToHexString(newMatch.extraInfo));
+                }
+            }
+
+            if (match != default)
+                match.returned = true;
+            
+            // ngl the portals are so unpredictable, due to variable query times - especially long with invalid reads - and 3ds portals, that interference is difficult to detect while accomodating for all factors
+            commandQueue.RemoveAll(x => (update - x.timestamp).TotalMilliseconds >= (x.returned ? 400 : 1200));
+
+            if (priorityCommands.Contains(commandChar))
+            {
+                (char, DateTime timestamp, bool returned, byte[]) existingCommand = default;
+
+                if (commandChar != 'Q' && commandChar != 'W')
+                    existingCommand = commandQueue.FirstOrDefault(x => x.commandChar == commandChar);
+                else
+                {
+                    foreach (var newMatch in matches)
+                    {
+                        byte[] sequence = new byte[newMatch.extraInfo.Length];
+                        Array.Copy(input, 1, sequence, 0, newMatch.extraInfo.Length);
+                        if (newMatch.extraInfo.SequenceEqual(sequence))
+                        {
+                            existingCommand = newMatch;
+                            break;
+                        }
+                        // still need to properly test different figure/block interference of the same command type
+                        Debug.Log("OG: " + BytesToHexString(sequence));
+                        Debug.Log("Found: " + BytesToHexString(newMatch.extraInfo));
+                    }
+                }
+
+                if (existingCommand != default)
+                    existingCommand.timestamp = update;
+                else
+                {
+                    if (commandChar == 'Q' || commandChar == 'W')
+                        commandQueue.Add((commandChar, update, false, (commandChar == 'Q' || commandChar == 'W') ? new byte[2] { input[1], input[2] } : null));
+                    
+                    if (detectInterference)
+                    {
+                        OnInterference?.Invoke(this, input);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
 
         public virtual async void StartReading()
         {
@@ -663,7 +722,6 @@ namespace PortalToUnity
             if (Instances.Contains(this))
             {
                 Instances.Remove(this);
-
                 for (int i = 0; i < FIGURE_INDICIES_COUNT; i++)
                 {
                     OnFigureRemoved?.Invoke(Figures[i], FigureDepartInfo.ParentPortalDisconnected);
@@ -677,18 +735,7 @@ namespace PortalToUnity
         public async void ReportRecieved(byte[] data)
         {
             char commandChar = (char)data[0];
-            (char, DateTime timestamp, bool returned) match = commandQueue.FirstOrDefault(x => x.commandChar == commandChar);
-            if (match != default)
-                match.returned = true;
-            commandQueue.RemoveAll(x => (DateTime.Now - x.timestamp).TotalMilliseconds >= (x.returned ? 250 : 800));
-            (char, DateTime timestamp, bool returned) existingCommand = commandQueue.FirstOrDefault(x => x.commandChar == commandChar);
-
-            // don't remove in case of flooded reports causing multiple late responses
-            if (existingCommand == default && priorityCommands.Contains(commandChar))
-            {
-                OnInterference?.Invoke(this, data);
-                return;
-            }
+            //if (UpdateReportValidator(data, true)) return;
 
             if (commandChar != 'S')
                 PTUManager.Log($"INPUT ({commandChar}): {BytesToHexString(data)}", LogPriority.Low);
@@ -708,19 +755,13 @@ namespace PortalToUnity
                 }
                 WakeQueue();
             }
-            else if (data[0] != 0xFA)
-            {
-                if (!Instances.Contains(this) && State == PortalState.Sleeping)
-                    await SetUpPortal();
-            }
+            else if (data[0] != 0xFA && !Instances.Contains(this) && State == PortalState.Sleeping)
+                await SetUpPortal();
 
             switch (commandChar)
             {
                 case 'A':
                     Active = data[1] != 0x00;
-                    break;
-                
-                case 'Q':
                     break;
                 
                 case 'R':
@@ -734,7 +775,10 @@ namespace PortalToUnity
                         currentlyQueryingFigure = null;
                         FiguresInQueue.Clear();
                     }
+
+                    // accomodate for weird wireless dongle "bug" (or whatever returning this id is meant to signify)
                     if (data[1] == 0x90 && data[2] == 0x00) break;
+
                     byte[] bytes = new byte[4];
                     Array.Copy(data, 1, bytes, 0, 4);
                     ID = TrimTrailingZeros(bytes);
@@ -742,7 +786,6 @@ namespace PortalToUnity
                 
                 case 'S':
                     if (State < PortalState.Sleeping) break;
-
                     ulong figurePresences = (ulong)(data[1] | data[2] << 0x08 | data[3] << 0x10 | data[4] << 0x18);
 
                     for (int i = 0; i < FIGURE_INDICIES_COUNT; i++)
@@ -754,27 +797,21 @@ namespace PortalToUnity
                             case FigurePresence.NotPresent:
                             case FigurePresence.JustDeparted:
                                 if (Figures[i].IsPresent())
-                                    FigureRemoved();
+                                {
+                                    Figures[i].Presence = presence;
+                                    OnFigureRemoved?.Invoke(Figures[i], FigureDepartInfo.RemovedFromPortal);
+                                }
                                 break;
 
                             case FigurePresence.Present:
                             case FigurePresence.JustArrived:
                                 if (!Figures[i].IsPresent())
-                                    FigureAdded();
+                                {
+                                    Figures[i].Presence = presence;
+                                    OnFigureAdded?.Invoke(Figures[i]);
+                                }
                                 break;
 
-                        }
-
-                        void FigureAdded()
-                        {
-                            Figures[i].Presence = presence;
-                            OnFigureAdded?.Invoke(Figures[i]);
-                        }
-
-                        void FigureRemoved()
-                        {
-                            Figures[i].Presence = presence;
-                            OnFigureRemoved?.Invoke(Figures[i], FigureDepartInfo.RemovedFromPortal);
                         }
                     }
                     break;
