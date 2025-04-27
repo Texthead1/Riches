@@ -222,15 +222,8 @@ namespace PortalToUnity
 
                 if (IsAccessControlBlock((byte)(i + areaOffset + offset)))
                     offset++;
-                
-                byte targetBlock = (byte)(i + areaOffset + offset);
 
-                unsafe
-                {
-                    fixed (byte* dataPtr = data)
-                        Cryptography.EncryptSpyroTagBlock(portalFigure.TagHeader, dataPtr, targetBlock);
-                }
-                await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, targetBlock, data);
+                await portalFigure.WriteBlock((byte)(i + areaOffset + offset), data);
             }
         }
 
@@ -246,15 +239,8 @@ namespace PortalToUnity
 
                 if (IsAccessControlBlock((byte)(i + areaOffset + offset)))
                     offset++;
-                
-                byte targetBlock = (byte)(i + areaOffset + offset);
 
-                unsafe
-                {
-                    fixed (byte* dataPtr = data)
-                        Cryptography.EncryptSpyroTagBlock(portalFigure.TagHeader, dataPtr, targetBlock);
-                }
-                await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, targetBlock, data);
+                await portalFigure.WriteBlock((byte)(i + areaOffset + offset), data);
             }
         }
     }

@@ -21,8 +21,9 @@ public class RichesManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI alertDescription;
     private PortalFigure alertedFigure;
     private CancellationTokenSource cts = new CancellationTokenSource();
-    
     private List<PortalFigure> finishedFigures = new List<PortalFigure>();
+
+    private bool failedSalt;
 
     private void OnEnable()
     {
@@ -71,6 +72,9 @@ public class RichesManager : MonoBehaviour
 
     public bool ShowAlert(string title, string message, bool force = true)
     {
+        if (failedSalt)
+            return false;
+
         bool result = true;
         if (cts.IsCancellationRequested)
         {
@@ -91,6 +95,7 @@ public class RichesManager : MonoBehaviour
 
     public void HideAlert()
     {
+        if (failedSalt) return;
         UnityMainThreadDispatcher.Instance().Enqueue(() =>
         {
             if (PortalOfPower.Instances.Count == 0)
@@ -281,6 +286,7 @@ public class RichesManager : MonoBehaviour
         {
             Debug.LogException(ex);
             ShowAlert("No Salt Provided", $"No correct salt.txt could be found at \"Assets/StreamingAssets/\". Please add the file and close the program");
+            failedSalt = true;
         }
         catch (Exception)
         {

@@ -285,7 +285,7 @@ namespace PortalToUnity
             {
                 if (IsAccessControlBlock((byte)(i + areaOffset + offset)))
                     offset++;
-                
+
                 await portalFigure.WriteBlock((byte)(i + areaOffset + offset), GetBlockManaged(i));
             }
         }
@@ -300,7 +300,7 @@ namespace PortalToUnity
             {
                 if (IsAccessControlBlock((byte)(i + areaOffset + offset)))
                     offset++;
-                
+
                 await portalFigure.WriteBlock((byte)(i + areaOffset + offset), GetBlockManaged(i + 0x04));
             }
         }
@@ -310,7 +310,7 @@ namespace PortalToUnity
             SetUpRegionHeader1();
             DataArea1 = (byte)((DataArea1 + 1) & 1);
             int areaOffset = (DataArea1 == 1) ? DATA_REGION1_OFFSET : DATA_REGION0_OFFSET;
-            await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, (byte)(areaOffset + 0x09), GetBlockManaged(0x07));
+            await portalFigure.WriteBlock((byte)(areaOffset + 0x09), GetBlockManaged(0x07));
         }
 
         public async Task SetRemainingData1()
@@ -324,7 +324,7 @@ namespace PortalToUnity
                 if (IsAccessControlBlock((byte)(i + areaOffset + offset)))
                     offset++;
 
-                await portalFigure.Parent.WriteFigureAsync(portalFigure.Index, (byte)(i + areaOffset + offset), GetBlockManaged(i + 0x08));
+                await portalFigure.WriteBlock((byte)(i + areaOffset + offset), GetBlockManaged(i + 0x08));
             }
         }
     }
