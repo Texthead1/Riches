@@ -8,6 +8,6 @@ Multiple Skylanders can be handled at once on a single Portal of Power without a
 This application is powered by Portal-To-Unity, an in-progress framework for interfacing with the Skylanders' Portals of Power in the Unity Engine. Note that Wireless Portals of Power are not correctly supported and may lead to strange behaviours due to the wireless dongle.
 
 ## Usage
-A correct salt.txt is required at "Assets/StreamingAssets/" to decrypt the Skylanders figures. The contents of the aforementioned file is used as part of the MD5 hash to generate the encryption key. Without it, the application will not execute correctly.
+A correct `salt.txt` is required at `Assets/StreamingAssets/` in source or `Riches_Data/StreamingAssets/` in builds to read/write the Skylanders figures correctly. The contents of the aforementioned file is used as part of the MD5 hash to generate the cryptographic key, otherwise the application will not function correctly. You can use [Bittersweet](https://github.com/Texthead1/Bittersweet-Salt-Extractor) to extract this file from an official source by passing in a legally owned ROM/file.
 
 This application expects the Portals of Power to be using the `libusbK` driver. Please make sure you install the driver first, which can be done via [Zadig](https://zadig.akeo.ie/), and apply it to any Portal of Power you wish to use.
